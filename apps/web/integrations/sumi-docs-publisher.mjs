@@ -19,7 +19,15 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
-import { dirname, extname, posix, resolve, sep } from "node:path";
+import {
+  dirname,
+  extname,
+  isAbsolute,
+  posix,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { catalogPublisherDocuments } from "../src/content-catalog.ts";
@@ -27,6 +35,7 @@ import { catalogPublisherDocuments } from "../src/content-catalog.ts";
 const OPENAPI_PATH = /^[a-zA-Z0-9_/-]+\.json$/;
 const SEMVER =
   /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+const FULL_COMMIT = /^[a-f0-9]{40}$/;
 const execFile = promisify(execFileCallback);
 
 function assertContained(root, candidate) {
@@ -128,7 +137,7 @@ export function createRemoteServerMetadata(remoteMcp) {
     description:
       "Read-only MCP access to the reviewed Sumi Docs documentation corpus.",
     repository: {
-      url: "https://github.com/starSumi/Sumi-Docs-MCP",
+      url: "https://github.com/starSumi/sumi-docs",
       source: "github",
       subfolder: "packages/mcp",
     },
@@ -153,6 +162,7 @@ export function normalizePublisherOptions(options = {}) {
           "contentRoot",
           "openapi",
           "provenance",
+          "requiredProvenance",
           "remoteMcp",
         ].includes(key),
     )
@@ -175,12 +185,22 @@ export function normalizePublisherOptions(options = {}) {
     options.remoteMcp === undefined
       ? undefined
       : normalizeRemoteMcp(options.remoteMcp);
+  if (options.provenance && options.requiredProvenance) {
+    throw new Error(
+      "Publisher provenance and requiredProvenance are mutually exclusive.",
+    );
+  }
+  const requiredProvenance =
+    options.requiredProvenance === undefined
+      ? undefined
+      : resolveRequiredProvenanceEnvironment(options.requiredProvenance);
   return {
     catalog: options.catalog,
     documents,
     ...(options.contentRoot && { contentRoot: options.contentRoot }),
     ...(options.openapi && { openapi: options.openapi }),
     ...(options.provenance && { provenance: options.provenance }),
+    ...(requiredProvenance && { requiredProvenance }),
     ...(remoteMcp && { remoteMcp }),
   };
 }
@@ -284,7 +304,17 @@ function normalizeRepositoryUrl(value) {
   if (scp) return `https://github.com/${scp[1]}`;
   try {
     const url = new URL(trimmed);
-    if (url.protocol === "https:" && !url.username && !url.password) {
+    if (
+      url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    ) {
+      let pathname = url.pathname.replace(/\/+$/u, "");
+      if (pathname.endsWith(".git")) pathname = pathname.slice(0, -4);
+      if (!pathname || pathname === "/") return null;
+      url.pathname = pathname;
       return url.href.replace(/\/$/, "");
     }
     if (url.protocol === "ssh:" && url.hostname === "github.com") {
@@ -294,6 +324,33 @@ function normalizeRepositoryUrl(value) {
     return null;
   }
   return null;
+}
+
+export function resolveRequiredProvenanceEnvironment(value = {}) {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).some((key) => !["repository", "commit"].includes(key))
+  ) {
+    throw new Error("Release provenance configuration is invalid.");
+  }
+  if (
+    (value.repository !== undefined && typeof value.repository !== "string") ||
+    (value.commit !== undefined && typeof value.commit !== "string")
+  ) {
+    throw new Error("Release provenance configuration is invalid.");
+  }
+  const repositoryValue = value.repository?.trim();
+  const commitValue = value.commit?.trim();
+  if (!repositoryValue && !commitValue) return undefined;
+  const repository = normalizeRepositoryUrl(repositoryValue);
+  if (!repository || !FULL_COMMIT.test(commitValue ?? "")) {
+    throw new Error(
+      "Release provenance requires a canonical HTTPS repository and full lowercase commit.",
+    );
+  }
+  return { repository, commit: commitValue, dirty: false };
 }
 
 async function git(projectRoot, args) {
@@ -308,8 +365,45 @@ async function git(projectRoot, args) {
   }
 }
 
-export async function resolveProvenance(projectRoot, explicit) {
+export async function resolveProvenance(
+  projectRoot,
+  explicit,
+  required,
+  command = git,
+) {
+  if (explicit && required) {
+    throw new Error("Release provenance could not be verified.");
+  }
   if (explicit) return explicit;
+  if (required) {
+    try {
+      const [root, remote, head, status] = await Promise.all([
+        command(projectRoot, ["rev-parse", "--show-toplevel"]),
+        command(projectRoot, ["config", "--get", "remote.origin.url"]),
+        command(projectRoot, ["rev-parse", "HEAD"]),
+        command(projectRoot, [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=all",
+        ]),
+      ]);
+      const actualRepository = normalizeRepositoryUrl(remote);
+      const projectPath = relative(resolve(root ?? ""), resolve(projectRoot));
+      if (
+        !root ||
+        projectPath.startsWith("..") ||
+        isAbsolute(projectPath) ||
+        actualRepository !== required.repository ||
+        head !== required.commit ||
+        status !== ""
+      ) {
+        throw new Error("mismatch");
+      }
+      return required;
+    } catch {
+      throw new Error("Release provenance could not be verified.");
+    }
+  }
   const [remote, head, status] = await Promise.all([
     git(projectRoot, ["remote", "get-url", "origin"]),
     git(projectRoot, ["rev-parse", "HEAD"]),
@@ -652,6 +746,7 @@ export default function sumiDocsPublisher(rawOptions) {
         const provenance = await resolveProvenance(
           projectRoot,
           options.provenance,
+          options.requiredProvenance,
         );
         const publication = await publishProjection({
           outputRoot,

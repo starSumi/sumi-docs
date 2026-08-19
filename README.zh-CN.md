@@ -10,8 +10,8 @@ Sumi Docs 将一套经过评审的文档语料发布给两类使用者：
 经过审阅的根 `docs/` 树与 content catalog 是语义事实源。Web 站点和 MCP 服务是可独立
 寻址的投影，Agent 宿主是 MCP client。
 
-[源码仓库](https://github.com/starSumi/Sumi-Docs-MCP)和
-[文档站](https://starsumi.github.io/Sumi-Docs-MCP/)已公开并处于持续开发阶段。目前
+[源码仓库](https://github.com/starSumi/sumi-docs)和
+[文档站](https://starsumi.github.io/sumi-docs/)已公开并处于持续开发阶段。目前
 尚未发布 npm package、带 tag 的 GitHub Release 或受支持的二进制文件。
 
 ## 前置要求
@@ -84,7 +84,9 @@ docs/                       产品手册和默认语料
 | 验证              | `pnpm run verify`                                                   | 运行 package 质量、测试和依赖门禁  |
 | 跨产品验证        | `pnpm run verify:integration`                                       | 通过 MCP 验证 Web 生成的语料       |
 
-项目不要求运行时 secret。只有发布网站候选版本时才要求 `SITE_URL`。容器接受文档化的
+本地运行与默认的 Pages-only 发布不要求运行时 secret。只有构建网站发布候选时才要求
+`SITE_URL`。启用可选的生产 Streamable HTTP 服务前，必须在受保护的 `production-mcp`
+environment 中配置经过评审的 endpoint 变量和 SSH 材料。容器接受文档化的
 `SUMI_DOCS_*` 部署变量；生成输出、本地状态、日志、缓存和 `.env` 文件保持忽略。
 
 各 workspace 的专用说明保留在其自身目录中。当前架构决策位于所属 workspace 的

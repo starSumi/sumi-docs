@@ -4,8 +4,9 @@ description: 将人类展示层与只读 MCP 数据层分离。
 ---
 
 网站、MCP 服务端和 corpus contract 是同一个 pnpm workspace 中各自负责的 package。
-Web 与 MCP 仍有独立的构建和发布生命周期；共享范围只包括 schema、canonicalization
-和 conformance helper。
+Web 与 MCP 仍可独立部署，但一次公开产品发布必须把两个 artifact 绑定到同一个提交和
+同一个机器投影 revision。运行时共享范围只包括 schema、canonicalization 和
+conformance helper。
 
 英文继续使用根路径以保持现有链接稳定，简体中文完整站点位于
 `/zh-cn/`。Starlight 的语言选择器可以在对应页面之间切换，主题选择器
@@ -19,14 +20,17 @@ locale 元数据、语言协商或回退。并行发布的 manifest v2 增加稳
 ```text
 经过审阅的 docs/ + content catalog + OpenAPI
         |
-        +-- Astro + Starlight -> 渲染页面和 Pagefind
-        |
-        +-- 发布集成 -> v1 + 不可变 v2 snapshot
-                                      |
-                                      v
-                          一个只读 DocsMcpServer 核心
-                              /                 \
-                           stdio          Streamable HTTP
+        +-- 一次 publisher 构建
+              |
+              +-- 渲染页面和 Pagefind
+              |
+              +-- 完全相同的 v1 + 不可变 v2 投影字节
+                             /                    \
+                         静态 Web artifact       MCP 服务镜像
+                                                   |
+                                      一个只读 DocsMcpServer 核心
+                                          /                 \
+                                       stdio          Streamable HTTP
 ```
 
 ## 所有权
@@ -34,6 +38,9 @@ locale 元数据、语言协商或回退。并行发布的 manifest v2 增加稳
 网站负责渲染、导航、可访问性、浏览器搜索和已发布的 corpus 投影。corpus-contract package
 负责纯 manifest 校验与 canonicalization。Sumi-Docs-MCP 负责有边界的获取、非执行文档
 解析、公开工具、输入校验，以及 stdio 与无状态 Streamable HTTP adapter。
+
+一次绑定提交的 publisher 构建只生成一份机器投影。Web artifact 与服务镜像消费完全相同
+的 locator、manifest、文档及 OpenAPI 字节；任何目标都不会独立重新计算第二份投影。
 
 ## 地址与客户端模型
 

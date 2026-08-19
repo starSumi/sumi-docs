@@ -3,7 +3,7 @@
     "sumi-docs-remote": {
       "command": "node",
       "args": [
-        "C:/absolute/path/to/Sumi-Docs-MCP/dist/index.js",
+        "C:/absolute/path/to/sumi-docs/packages/mcp/dist/index.js",
         "serve",
         "https://content.example.com/product/",
         "--base-url",

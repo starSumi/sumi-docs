@@ -28,6 +28,15 @@ node packages/mcp/dist/index.js serve http://127.0.0.1:4321/_mcp/v2/current.json
 
 MCP loader 会校验规范化 manifest、revision、字节数和 SHA-256 摘要。目录 URL 与 v1 manifest URL 继续作为向后兼容入口。
 
+Web 构建或 artifact 解压后，也可以从精确的本地 locator 读取同一份 v2 投影：
+
+```powershell
+node packages/mcp/dist/index.js serve ./apps/web/dist/_mcp/v2/current.json --base-url http://127.0.0.1:4321/
+```
+
+本地与远程 v2 source 共享同一份 manifest 和完整性契约。本地路径还会经过词法路径与
+真实路径包含校验。locator 是唯一受支持的 v2 入口，OpenAPI 由其 manifest 提供。
+
 投影包含经过审阅的 Markdown 或 MDX。通用 HTML 爬取、DOM 执行和启发式 AST 清洗
 不属于 MCP 核心。独立 ingestion 系统必须先完成规范化、记录 provenance，并提交经过
 审阅的内容，publisher 才能接受。

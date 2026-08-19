@@ -3,6 +3,7 @@ import type { DoctorReport } from "./doctor.js";
 import type { ParsedCLIOptions } from "./types/index.js";
 import { normalizeBaseUrl } from "./utils/document-url.js";
 import { sanitizeDiagnostic } from "./utils/diagnostics.js";
+import { isLocalV2LocatorPath } from "./utils/local-source-path.js";
 import {
   isRemoteDocsSource,
   normalizeRemoteManifestUrl,
@@ -17,11 +18,12 @@ Usage:
   sumi-docs-mcp doctor [docs-source] [--config <path>] [--json] [--show-paths]
 
 Options:
-  [docs-source]          Local directory or remote HTTPS manifest/base URL
+  [docs-source]          Local directory, local _mcp/v2/current.json, or
+                         remote HTTPS manifest/base URL
                          (default: project config, then <project-root>/docs)
   --config <path>        Explicit sumi-docs.config.json path
   --openapi <path>       Path to an OpenAPI JSON specification
-                         (local directory mode only)
+                         (local directory mode only; manifests declare it)
   --base-url <url>       Public HTTP(S) prefix for clickable document URLs
   --transport <type>     Transport: stdio (default) or streamable-http
   --http-host <host>     HTTP bind host (default: 127.0.0.1)
@@ -126,6 +128,11 @@ export function parseCliOptions(argv: string[]): ParsedCLIOptions | null {
         "Remote documentation must declare OpenAPI in its manifest; --openapi is local-only.",
       );
     }
+  }
+  if (docsSource && isLocalV2LocatorPath(docsSource) && args.openapi) {
+    throw new Error(
+      "Manifest-backed documentation must declare OpenAPI in its manifest; --openapi is directory-only.",
+    );
   }
   const options: ParsedCLIOptions = {
     docsSource,
@@ -375,8 +382,10 @@ export async function run(argv: string[]): Promise<void> {
     (vaultReady ??= (async () => {
       const { DocsVault } = await import("./vfs/DocsVault.js");
       const vault = new DocsVault();
-      if (isRemoteDocsSource(options.docsSource)) {
+      if (options.sourceKind === "remote") {
         await vault.loadFromRemoteManifest(options.docsSource);
+      } else if (options.sourceKind === "local-v2") {
+        await vault.loadFromLocalManifest(options.docsSource);
       } else {
         await vault.loadFromDirectory(options.docsSource);
         if (options.openApiPath) await vault.loadOpenApi(options.openApiPath);

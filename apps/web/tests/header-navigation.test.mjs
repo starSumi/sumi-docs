@@ -44,8 +44,8 @@ test("localizes and prefixes navigation for project deployment", () => {
   assert.deepEqual(
     resolveHeaderNavigation(
       "zh-CN",
-      "/Sumi-Docs-MCP/",
-      "/Sumi-Docs-MCP/zh-cn/reference/api/corpus-contract/interfaces/manifestv2/",
+      "/sumi-docs/",
+      "/sumi-docs/zh-cn/reference/api/corpus-contract/interfaces/manifestv2/",
     ),
     {
       label: "主要导航",
@@ -53,31 +53,31 @@ test("localizes and prefixes navigation for project deployment", () => {
         {
           id: "get-started",
           label: "开始使用",
-          href: "/Sumi-Docs-MCP/zh-cn/getting-started/",
+          href: "/sumi-docs/zh-cn/getting-started/",
           active: false,
         },
         {
           id: "mcp-tools",
           label: "MCP 工具",
-          href: "/Sumi-Docs-MCP/zh-cn/tool-reference/",
+          href: "/sumi-docs/zh-cn/tool-reference/",
           active: false,
         },
         {
           id: "api",
           label: "API",
-          href: "/Sumi-Docs-MCP/zh-cn/reference/api/corpus-contract/readme/",
+          href: "/sumi-docs/zh-cn/reference/api/corpus-contract/readme/",
           active: true,
         },
         {
           id: "security",
           label: "安全",
-          href: "/Sumi-Docs-MCP/zh-cn/security/",
+          href: "/sumi-docs/zh-cn/security/",
           active: false,
         },
         {
           id: "contribute",
           label: "参与贡献",
-          href: "/Sumi-Docs-MCP/zh-cn/contributing/",
+          href: "/sumi-docs/zh-cn/contributing/",
           active: false,
         },
       ],
@@ -88,8 +88,8 @@ test("localizes and prefixes navigation for project deployment", () => {
 test("marks contributor pages through stable document IDs", () => {
   const navigation = resolveHeaderNavigation(
     "en",
-    "/Sumi-Docs-MCP/",
-    "/Sumi-Docs-MCP/skills-and-orchestration/",
+    "/sumi-docs/",
+    "/sumi-docs/skills-and-orchestration/",
   );
   assert.equal(navigation.items.at(-1)?.id, "contribute");
   assert.equal(navigation.items.at(-1)?.active, true);
@@ -98,14 +98,14 @@ test("marks contributor pages through stable document IDs", () => {
 test("mounts the security policy through its catalog identity", () => {
   const navigation = resolveHeaderNavigation(
     "zh-CN",
-    "/Sumi-Docs-MCP/",
-    "/Sumi-Docs-MCP/zh-cn/security/",
+    "/sumi-docs/",
+    "/sumi-docs/zh-cn/security/",
   );
   const security = navigation.items.find(({ id }) => id === "security");
   assert.deepEqual(security, {
     id: "security",
     label: "安全",
-    href: "/Sumi-Docs-MCP/zh-cn/security/",
+    href: "/sumi-docs/zh-cn/security/",
     active: true,
   });
 });
@@ -113,8 +113,8 @@ test("mounts the security policy through its catalog identity", () => {
 test("marks the overview as part of the getting-started surface", () => {
   const navigation = resolveHeaderNavigation(
     "en",
-    "/Sumi-Docs-MCP/",
-    "/Sumi-Docs-MCP/",
+    "/sumi-docs/",
+    "/sumi-docs/",
   );
   assert.equal(navigation.items[0].active, true);
 });
@@ -128,7 +128,7 @@ test("rejects unsupported locales and paths outside the deployment base", () => 
     () =>
       resolveHeaderNavigation(
         "en",
-        "/Sumi-Docs-MCP/",
+        "/sumi-docs/",
         "/different/getting-started/",
       ),
     /outside the site base path/u,

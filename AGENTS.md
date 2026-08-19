@@ -43,6 +43,20 @@ commands.
   generic orchestration API, distributed state store, scheduler, or extension
   framework without a measured workload and an accepted decision.
 
+## Design review lenses
+
+- Apply Conway's law deliberately: package, service, workflow, and release
+  boundaries must match durable ownership and operational responsibility. If a
+  routine change repeatedly requires synchronized edits across owners, repair
+  the contract or ownership boundary instead of normalizing coordination debt.
+- Essential complexity must have an explicit owner. Keep protocol, security,
+  integrity, and recovery complexity in their governing contract or control
+  plane; do not leak it into host adapters, skills, or consumers merely to make
+  the core appear simpler.
+- Prefer executable invariants, conformance tests, and fail-closed workflow
+  policy over prose. Documentation explains the contract but cannot substitute
+  for an enforced state transition or release gate.
+
 ## Invariants
 
 - Preserve manifest v1 at its existing URL and shape while v2 is introduced in

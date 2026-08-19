@@ -3,7 +3,7 @@
     "sumi-docs": {
       "command": "node",
       "args": [
-        "C:/absolute/path/to/Sumi-Docs-MCP/dist/index.js",
+        "C:/absolute/path/to/sumi-docs/packages/mcp/dist/index.js",
         "serve",
         "C:/absolute/path/to/your/docs",
         "--openapi",

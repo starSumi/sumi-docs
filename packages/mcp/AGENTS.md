@@ -37,6 +37,12 @@ read-only, and apply the documented protocol, origin, redirect, time, count, and
 size limits. Do not add general site crawling or authenticated fetch behavior
 without architecture and security review.
 
+A local manifest-backed source must be the exact `_mcp/v2/current.json`
+locator. Resolve and verify every referenced path lexically and through its real
+path, enforce the shared count and byte limits, validate every digest, and
+commit the vault only after the complete snapshot succeeds. Do not accept an
+arbitrary JSON file or direct v2 manifest as a local entry point.
+
 ### Headless runtime
 
 Do not add React, Vue, Svelte, Angular, DOM libraries, browser APIs, or UI-specific
@@ -150,13 +156,15 @@ the same change.
 
 ## Data lifecycle
 
-The MCP server object is cheap to construct. In stdio mode, the first content tool
-call builds a `DocsVault`, recursively parses a local Markdown/MDX directory or
-downloads one bounded remote manifest snapshot, and optionally loads OpenAPI
-JSON. That promise and read-only index are reused until process exit, and
-`tools/list` must not wait for corpus loading. Streamable HTTP performs the same
-bounded load once before opening its listener, then gives each request a fresh
-protocol server backed by that immutable process-local snapshot.
+The MCP server object is cheap to construct. In stdio mode, the first content
+tool call builds a `DocsVault`: it recursively parses a local Markdown/MDX
+directory, verifies one local v2 locator, or downloads one bounded remote
+manifest snapshot. Directory mode may load a separate OpenAPI JSON file;
+manifest-backed modes take OpenAPI from the manifest. That promise and
+read-only index are reused until process exit, and `tools/list` must not wait
+for corpus loading. Streamable HTTP performs the same bounded load once before
+opening its listener, then gives each request a fresh protocol server backed by
+that immutable process-local snapshot.
 
 There is no live reload. Documentation changes require a process restart. The
 current implementation holds parsed document content in memory; do not claim

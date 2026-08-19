@@ -85,7 +85,7 @@ test("local preview serves read-only extensionless document URLs", async () => {
 
     const traversal = await fetch(new URL("..%2F..%2Fpackage.json", baseUrl));
     assert.equal(traversal.status, 404);
-    assert.doesNotMatch(await traversal.text(), /Zero_Base|Sumi-Docs-MCP/i);
+    assert.doesNotMatch(await traversal.text(), /Zero_Base|sumi-docs/i);
   } finally {
     child.kill();
     await new Promise<void>((resolve) => {

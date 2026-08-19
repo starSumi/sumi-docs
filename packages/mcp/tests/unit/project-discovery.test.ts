@@ -9,6 +9,7 @@ import {
   resolveCliOptions,
 } from "../../src/project-config.js";
 import { parseCliOptions } from "../../src/cli.js";
+import { writeV2Projection } from "../helpers/v2-projection.js";
 
 async function writeDocument(root: string, path = "index.md"): Promise<void> {
   const target = join(root, path);
@@ -276,5 +277,78 @@ test("doctor reports runtime, discovery, and a loadable corpus", async () => {
     assert.equal(report.source.kind, "local");
     assert.equal(report.source.documentCount, 1);
     assert.equal(report.source.loadable, true);
+  });
+});
+
+test("config and doctor recognize an exact local v2 current locator", async () => {
+  await withFixture(async (root) => {
+    const project = join(root, "project");
+    await mkdir(join(project, ".git"), { recursive: true });
+    const fixture = await writeV2Projection(project);
+    await writeFile(
+      join(project, "sumi-docs.config.json"),
+      JSON.stringify({ version: 1, source: "_mcp/v2/current.json" }),
+    );
+
+    const parsed = parseCliOptions(["serve"])!;
+    const resolved = await resolveCliOptions(parsed, project);
+    assert.equal(resolved.docsSource, fixture.locatorPath);
+    assert.equal(resolved.sourceKind, "local-v2");
+    assert.equal(resolved.sourceFormat, "manifest-v2");
+
+    const report = await createDoctorReport(parsed, project, "25.5.0");
+    assert.equal(report.source.kind, "local");
+    assert.equal(report.source.format, "manifest-v2");
+    assert.equal(report.source.corpusRevision, fixture.revision);
+    assert.equal(report.source.documentCount, 1);
+    assert.equal(report.source.openApiLoaded, true);
+  });
+});
+
+test("local v2 locator rejects configured or CLI OpenAPI", async () => {
+  await withFixture(async (root) => {
+    const project = join(root, "project");
+    await mkdir(join(project, ".git"), { recursive: true });
+    await writeV2Projection(project);
+    await writeFile(join(project, "openapi.json"), "{}\n");
+    await writeFile(
+      join(project, "sumi-docs.config.json"),
+      JSON.stringify({
+        version: 1,
+        source: "_mcp/v2/current.json",
+        openapi: "openapi.json",
+      }),
+    );
+
+    await assert.rejects(
+      resolveCliOptions(parseCliOptions(["serve"])!, project),
+      /must declare OpenAPI in its manifest/iu,
+    );
+  });
+});
+
+test("explicit local v2 locator does not inherit directory OpenAPI config", async () => {
+  await withFixture(async (root) => {
+    const project = join(root, "project");
+    const external = join(root, "external");
+    await mkdir(join(project, ".git"), { recursive: true });
+    await writeDocument(join(project, "docs"));
+    await writeFile(join(project, "openapi.json"), "{}\n");
+    await writeFile(
+      join(project, "sumi-docs.config.json"),
+      JSON.stringify({
+        version: 1,
+        source: "docs",
+        openapi: "openapi.json",
+      }),
+    );
+    const fixture = await writeV2Projection(external);
+
+    const resolved = await resolveCliOptions(
+      parseCliOptions(["serve", fixture.locatorPath])!,
+      project,
+    );
+    assert.equal(resolved.sourceKind, "local-v2");
+    assert.equal(resolved.openApiPath, undefined);
   });
 });

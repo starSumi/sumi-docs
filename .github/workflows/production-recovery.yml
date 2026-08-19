@@ -1,0 +1,473 @@
+name: Production documentation recovery
+
+on:
+  workflow_run:
+    workflows:
+      - Production documentation release
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: production-documentation-main
+  cancel-in-progress: false
+
+jobs:
+  observe:
+    name: Bind recovery to explicit failed-run evidence
+    if: ${{ github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion != 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      pages-phase: ${{ steps.evidence.outputs.pages-phase }}
+      pages-required: ${{ steps.evidence.outputs.pages-required }}
+      record-present: ${{ steps.evidence.outputs.record-present }}
+      switch-present: ${{ steps.evidence.outputs.switch-present }}
+      rollback-artifact: ${{ steps.evidence.outputs.rollback-artifact }}
+    steps:
+      - name: Check out the failed release procedure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Inspect the exact failed run attempt and classify Pages phase
+        id: evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAILED_RUN_ID: ${{ github.event.workflow_run.id }}
+          FAILED_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$FAILED_RUN_ID/attempts/$FAILED_RUN_ATTEMPT/jobs?per_page=100" > artifacts/jobs.json
+          pages_phase="$(node scripts/verify-production-deployment.mjs pages-phase \
+            --input artifacts/jobs.json \
+            --job-name 'Promote the prebuilt Pages artifact' \
+            --step-name 'Deploy verified artifact')"
+          echo "pages-phase=$pages_phase" >> "$GITHUB_OUTPUT"
+          if [[ "$pages_phase" = not-attempted ]]; then
+            echo 'pages-required=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'pages-required=true' >> "$GITHUB_OUTPUT"
+          fi
+
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$FAILED_RUN_ID/artifacts?per_page=100" \
+            > artifacts/inventory.json
+          selection="$(node scripts/verify-production-deployment.mjs artifact-inventory \
+            --input artifacts/inventory.json --run-id "$FAILED_RUN_ID" \
+            --run-attempt "$FAILED_RUN_ATTEMPT")"
+          record_name="$(jq -r .names.record <<< "$selection")"
+          switch_name="$(jq -r .names.switch <<< "$selection")"
+          rollback_name="$(jq -r .names.rollbackPages <<< "$selection")"
+          record_count="$(jq '.recordIds | length' <<< "$selection")"
+          switch_count="$(jq '.switchIds | length' <<< "$selection")"
+          rollback_count="$(jq '.rollbackPagesIds | length' <<< "$selection")"
+          if [[ "$switch_count" = 1 && "$record_count" != 1 ]]; then
+            printf 'Switch evidence without its exact deployment record is ambiguous.\n' >&2
+            exit 1
+          fi
+          if [[ "$pages_phase" != not-attempted && "$rollback_count" != 1 ]]; then
+            printf 'A Pages attempt requires one unexpired rollback artifact from the same run.\n' >&2
+            exit 1
+          fi
+          echo "record-present=$([[ "$record_count" = 1 ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "switch-present=$([[ "$switch_count" = 1 ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "rollback-artifact=github-pages-recovery-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-from-$FAILED_RUN_ID-$FAILED_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+
+      - name: Download the exact failed-run Pages rollback
+        if: ${{ steps.evidence.outputs.pages-required == 'true' }}
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: github-pages-rollback-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+          path: artifacts/pages
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify the preserved Pages archive
+        if: ${{ steps.evidence.outputs.pages-required == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f artifacts/pages/artifact.tar
+          test "$(stat --format '%s' artifacts/pages/artifact.tar)" -le 10737418240
+          ! tar -tf artifacts/pages/artifact.tar | grep -Eq '(^/|(^|/)\.\.(/|$))'
+          ! tar -tvf artifacts/pages/artifact.tar | grep -Eq '^[lh]'
+
+      - name: Re-upload the exact Pages rollback for this recovery run
+        if: ${{ steps.evidence.outputs.pages-required == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.evidence.outputs.rollback-artifact }}
+          path: artifacts/pages/artifact.tar
+          if-no-files-found: error
+          retention-days: 7
+
+  observe-switch:
+    name: Re-observe remote state before any recovery write
+    needs: observe
+    if: ${{ always() && needs.observe.outputs.record-present == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-mcp
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      state: ${{ steps.observe.outputs.state }}
+      changed: ${{ steps.observe.outputs.changed }}
+      rollback-required: ${{ steps.observe.outputs.rollback-required }}
+      prior-state: ${{ steps.observe.outputs.prior-state }}
+      image: ${{ steps.record.outputs.image }}
+      image-id: ${{ steps.record.outputs.image-id }}
+      commit: ${{ steps.record.outputs.commit }}
+    steps:
+      - name: Check out the failed release procedure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Download the exact deployment record
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: mcp-deployment-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+          path: artifacts/deployment
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify the exact deployment record
+        id: record
+        env:
+          FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/verify-production-deployment.mjs record --json \
+            --input artifacts/deployment/deployment.json \
+            --repository "$GITHUB_REPOSITORY" --commit "$FAILED_SHA" \
+            > artifacts/deployment/deployment.validated.json
+          image="$(jq -er .value.image artifacts/deployment/deployment.validated.json)"
+          image_id="$(jq -er .value.imageId artifacts/deployment/deployment.validated.json)"
+          corpus="$(jq -er .value.corpusRevision artifacts/deployment/deployment.validated.json)"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "image-id=$image_id" >> "$GITHUB_OUTPUT"
+          echo "corpus=$corpus" >> "$GITHUB_OUTPUT"
+          echo "commit=$FAILED_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify optional failed-run switch artifact
+        if: ${{ needs.observe.outputs.switch-present == 'true' }}
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: mcp-switch-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+          path: artifacts/deployment
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Validate optional switch artifact against the record
+        if: ${{ needs.observe.outputs.switch-present == 'true' }}
+        env:
+          FAILED_SHA: ${{ steps.record.outputs.commit }}
+          IMAGE_REF: ${{ steps.record.outputs.image }}
+          IMAGE_ID: ${{ steps.record.outputs.image-id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/verify-production-deployment.mjs switch --json \
+            --input artifacts/deployment/switch.json --commit "$FAILED_SHA" \
+            --image "$IMAGE_REF" --image-id "$IMAGE_ID" \
+            > artifacts/deployment/switch.validated.json
+
+      - name: Observe the durable intent and completion evidence
+        id: observe
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          IMAGE_REF: ${{ steps.record.outputs.image }}
+          IMAGE_ID: ${{ steps.record.outputs.image-id }}
+          FAILED_SHA: ${{ steps.record.outputs.commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/deploy-key"
+          known_hosts="$RUNNER_TEMP/known-hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$known_hosts"
+          lookup="$DEPLOY_SSH_HOST"
+          if [[ "$DEPLOY_SSH_PORT" != 22 ]]; then lookup="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"; fi
+          ssh-keygen -F "$lookup" -f "$known_hosts" >/dev/null
+          observation="$(ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- observe "$FAILED_SHA" "$IMAGE_REF" "$IMAGE_ID" \
+            < scripts/deploy-remote-mcp.sh)"
+          printf '%s\n' "$observation" > artifacts/deployment/switch-observation.json
+          node scripts/verify-production-deployment.mjs switch-observation --json \
+            --input artifacts/deployment/switch-observation.json \
+            --commit "$FAILED_SHA" --image "$IMAGE_REF" --image-id "$IMAGE_ID" \
+            > artifacts/deployment/switch-observation.validated.json
+          state="$(jq -r .value.state artifacts/deployment/switch-observation.validated.json)"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "changed=$(jq -r '.value.state == "changed"' artifacts/deployment/switch-observation.validated.json)" >> "$GITHUB_OUTPUT"
+          echo "rollback-required=$(jq -r .value.rollbackRequired artifacts/deployment/switch-observation.validated.json)" >> "$GITHUB_OUTPUT"
+          echo "prior-state=$(jq -r .value.priorState artifacts/deployment/switch-observation.validated.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Keep recovery observation when artifact storage is degraded
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mcp-recovery-observation-${{ github.run_id }}-${{ github.run_attempt }}-from-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+          path: artifacts/deployment/switch-observation.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Resume cleanup of an accepted remote transaction
+        if: ${{ steps.observe.outputs.state == 'committed' }}
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          IMAGE_REF: ${{ steps.record.outputs.image }}
+          FAILED_SHA: ${{ steps.record.outputs.commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/deploy-key"
+          known_hosts="$RUNNER_TEMP/known-hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$known_hosts"
+          lookup="$DEPLOY_SSH_HOST"
+          if [[ "$DEPLOY_SSH_PORT" != 22 ]]; then lookup="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"; fi
+          ssh-keygen -F "$lookup" -f "$known_hosts" >/dev/null
+          ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- finalize "$FAILED_SHA" "$IMAGE_REF" \
+            < scripts/deploy-remote-mcp.sh
+
+  restore-pages:
+    name: Restore Pages only after an observed Pages attempt
+    needs: observe
+    if: ${{ always() && needs.observe.outputs.pages-required == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.rollback.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Redeploy the preserved Pages artifact
+        id: rollback
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        with:
+          artifact_name: ${{ needs.observe.outputs.rollback-artifact }}
+
+  verify-pages:
+    name: Verify the recovered public Pages tuple
+    needs: [observe, restore-pages]
+    if: ${{ always() && needs.observe.outputs.pages-required == 'true' && needs.restore-pages.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      pages: read
+    outputs:
+      corpus-revision: ${{ steps.readback.outputs.corpus-revision }}
+    steps:
+      - name: Download the exact re-uploaded Pages rollback
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.observe.outputs.rollback-artifact }}
+          path: artifacts/pages
+
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Match the public locator to the preserved artifact
+        id: readback
+        env:
+          SITE_ORIGIN: ${{ steps.pages.outputs.origin }}
+          SITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/pages/extracted
+          tar -xf artifacts/pages/artifact.tar -C artifacts/pages/extracted _mcp/v2/current.json
+          site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error --max-time 10 \
+              "${site_root%/}/_mcp/v2/current.json" > artifacts/public-locator.json && \
+              cmp -s artifacts/pages/extracted/_mcp/v2/current.json artifacts/public-locator.json; then
+              break
+            fi
+            [[ "$attempt" != 30 ]]
+            sleep 2
+          done
+          revision="$(jq -er .revision artifacts/public-locator.json)"
+          [[ "$revision" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "corpus-revision=$revision" >> "$GITHUB_OUTPUT"
+
+  restore-mcp:
+    name: Restore MCP after Pages or pre-Pages compensation
+    needs: [observe, observe-switch, verify-pages]
+    if: ${{ always() && (needs.observe-switch.outputs.rollback-required == 'true' || needs.observe-switch.outputs.state == 'rolled-back') && ((needs.observe.outputs.pages-required == 'true' && needs.verify-pages.result == 'success') || (needs.observe.outputs.pages-required == 'false' && needs.verify-pages.result == 'skipped')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-mcp
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Check out the failed release rollback procedure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Re-observe and restore the prior MCP tuple
+        id: restore
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          IMAGE_REF: ${{ needs.observe-switch.outputs.image }}
+          IMAGE_ID: ${{ needs.observe-switch.outputs.image-id }}
+          FAILED_SHA: ${{ needs.observe-switch.outputs.commit }}
+          PRIOR_STATE: ${{ needs.observe-switch.outputs.prior-state }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/deploy-key"
+          known_hosts="$RUNNER_TEMP/known-hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$known_hosts"
+          lookup="$DEPLOY_SSH_HOST"
+          if [[ "$DEPLOY_SSH_PORT" != 22 ]]; then lookup="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"; fi
+          ssh-keygen -F "$lookup" -f "$known_hosts" >/dev/null
+          observation="$(ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- observe "$FAILED_SHA" "$IMAGE_REF" "$IMAGE_ID" \
+            < scripts/deploy-remote-mcp.sh)"
+          printf '%s\n' "$observation" > artifacts-switch-observation.json
+          node scripts/verify-production-deployment.mjs switch-observation --json \
+            --input artifacts-switch-observation.json \
+            --commit "$FAILED_SHA" --image "$IMAGE_REF" --image-id "$IMAGE_ID" \
+            > artifacts-switch-observation.validated.json
+          state="$(jq -r .value.state artifacts-switch-observation.validated.json)"
+          rollback_required="$(jq -r .value.rollbackRequired artifacts-switch-observation.validated.json)"
+          if [[ "$state" != rolled-back ]]; then
+            test "$rollback_required" = true
+          fi
+          prior_state="$(jq -r .value.priorState artifacts-switch-observation.validated.json)"
+          test "$prior_state" = "$PRIOR_STATE"
+          rollback_record="$(ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- rollback "$FAILED_SHA" "$IMAGE_REF" "$prior_state" \
+            < scripts/deploy-remote-mcp.sh)"
+          printf '%s\n' "$rollback_record" > rollback.json
+          node scripts/verify-production-deployment.mjs rollback --json \
+            --input rollback.json > rollback.validated.json
+          echo "restored=$(jq -r .value.restored rollback.validated.json)" >> "$GITHUB_OUTPUT"
+          echo "build-revision=$(jq -r '.value.buildRevision // ""' rollback.validated.json)" >> "$GITHUB_OUTPUT"
+          echo "corpus-revision=$(jq -r '.value.corpusRevision // ""' rollback.validated.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure GitHub Pages for public readback
+        id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Verify both public tuples after recovery
+        env:
+          RESTORED: ${{ steps.restore.outputs.restored }}
+          RESTORED_BUILD_REVISION: ${{ steps.restore.outputs.build-revision }}
+          RESTORED_CORPUS_REVISION: ${{ steps.restore.outputs.corpus-revision }}
+          RESTORE_PAGES: ${{ needs.observe.outputs.pages-required }}
+          DEPLOY_PUBLIC_MCP_READINESS_URL: ${{ vars.DEPLOY_PUBLIC_MCP_READINESS_URL }}
+          SITE_ORIGIN: ${{ steps.pages.outputs.origin }}
+          SITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"
+          locator_status="$(curl --silent --show-error --max-time 10 \
+            --output public-locator.json --write-out '%{http_code}' \
+            "${site_root%/}/_mcp/v2/current.json")"
+          if [[ "$RESTORED" = true ]]; then
+            test "$locator_status" = 200
+            test "$(jq -r .revision public-locator.json)" = "$RESTORED_CORPUS_REVISION"
+            for attempt in {1..30}; do
+              if curl --fail --silent --show-error --max-time 10 \
+                "$DEPLOY_PUBLIC_MCP_READINESS_URL" > restored-ready.json && \
+                node scripts/verify-production-deployment.mjs ready \
+                  --input restored-ready.json --commit "$RESTORED_BUILD_REVISION" \
+                  --corpus-revision "$RESTORED_CORPUS_REVISION"; then
+                break
+              fi
+              [[ "$attempt" != 30 ]]
+              sleep 2
+            done
+          else
+            test "$locator_status" = 404
+            readiness_status="$(curl --silent --show-error --max-time 10 \
+              --output absent-ready.txt --write-out '%{http_code}' \
+              "$DEPLOY_PUBLIC_MCP_READINESS_URL" || true)"
+            [[ ! "$readiness_status" =~ ^2[0-9][0-9]$ ]]
+          fi
+
+      - name: Complete the recovered remote transaction
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          IMAGE_REF: ${{ needs.observe-switch.outputs.image }}
+          FAILED_SHA: ${{ needs.observe-switch.outputs.commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/deploy-key"
+          known_hosts="$RUNNER_TEMP/known-hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$known_hosts"
+          lookup="$DEPLOY_SSH_HOST"
+          if [[ "$DEPLOY_SSH_PORT" != 22 ]]; then lookup="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"; fi
+          ssh-keygen -F "$lookup" -f "$known_hosts" >/dev/null
+          ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- complete-rollback "$FAILED_SHA" "$IMAGE_REF" \
+            < scripts/deploy-remote-mcp.sh

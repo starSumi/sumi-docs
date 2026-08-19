@@ -46,6 +46,24 @@ import {
   validateWorkflowPolicy,
 } from "../scripts/verify-workflows.mjs";
 import {
+  classifyPagesPhaseEvidence,
+  createEvidenceEnvelope,
+  decideProductionCompensation,
+  deriveAllowedOriginHosts,
+  mayRollbackMcp,
+  productionArtifactNames,
+  selectRecoveryArtifacts,
+  validateDeploymentRecord,
+  validateExpectedDeploymentRecord,
+  validatePriorDiscovery,
+  validatePriorSiteManifest,
+  validateProductionEndpointConfiguration,
+  validateReadyEvidence,
+  validateRollbackRecord,
+  validateSwitchObservation,
+  validateSwitchRecord,
+} from "../scripts/verify-production-deployment.mjs";
+import {
   DOC_TRANSLATION_PATHS,
   gitBlobHash,
   validatePairRecord,
@@ -736,21 +754,22 @@ test("active workflows enforce privilege and supersession boundaries", () => {
     (step) => step.name === "Exercise the hardened container boundary",
   ).run = "docker run sumi-docs-mcp:acceptance";
   weakened.pages.jobs.build.steps.find(
-    (step) => step.name === "Build and verify site",
+    (step) => step.name === "Build and verify the release tuple",
   ).env.BASE_PATH = "/unreviewed/";
   delete weakened.pages.jobs.build.steps.find(
-    (step) => step.name === "Build and verify site",
+    (step) => step.name === "Build and verify the release tuple",
   ).env.PUBLIC_MCP_URL;
   delete weakened.pages.jobs.build.steps.find(
-    (step) => step.name === "Build and verify site",
+    (step) => step.name === "Build and verify the release tuple",
   ).env.PUBLIC_MCP_READINESS_URL;
   weakened.pages.jobs.build.steps.find(
-    (step) => step.name === "Verify configured remote MCP readiness",
+    (step) =>
+      step.name === "Observe the prior site and preserve its Pages artifact",
   ).run = "echo skipped";
   weakened.pages.jobs.build.steps.find(
     (step) => step.name === "Upload verified Pages artifact",
   ).with.path = ".";
-  weakened.pages.jobs.deploy.permissions.contents = "write";
+  weakened.pages.jobs["deploy-pages"].permissions.contents = "write";
   const errors = validateWorkflowPolicy(weakened);
   assert.ok(errors.some((error) => error.includes("permissions")));
   assert.ok(errors.some((error) => error.includes("cancelled or superseded")));
@@ -761,10 +780,768 @@ test("active workflows enforce privilege and supersession boundaries", () => {
   assert.ok(errors.some((error) => error.includes("built SEA binary")));
   assert.ok(errors.some((error) => error.includes("pinned pnpm")));
   assert.ok(errors.some((error) => error.includes("stateless MCP container")));
-  assert.ok(errors.some((error) => error.includes("configured origin/base")));
-  assert.ok(errors.some((error) => error.includes("bind remote MCP")));
-  assert.ok(errors.some((error) => error.includes("verified Web artifact")));
-  assert.ok(errors.some((error) => error.includes("deployment authority")));
+  assert.ok(
+    errors.some((error) =>
+      error.includes("preserve rollback evidence and bind one Web projection"),
+    ),
+  );
+  assert.ok(errors.some((error) => error.includes("Pages promotion")));
+});
+
+test("production deployment evidence is digest-pinned and corpus-bound", () => {
+  const commit = "a".repeat(40);
+  const corpusRevision = `sha256:${"b".repeat(64)}`;
+  const imageDigest = `sha256:${"c".repeat(64)}`;
+  const imageId = `sha256:${"d".repeat(64)}`;
+  const record = {
+    schemaVersion: 1,
+    repository: "starSumi/sumi-docs",
+    commit,
+    corpusRevision,
+    image: `ghcr.io/starsumi/sumi-docs@${imageDigest}`,
+    imageId,
+  };
+  assert.deepEqual(validateDeploymentRecord(record), record);
+  assert.deepEqual(
+    validateExpectedDeploymentRecord(record, {
+      repository: record.repository,
+      commit,
+      corpusRevision,
+      image: record.image,
+      imageId,
+    }),
+    record,
+  );
+
+  for (const [field, value] of [
+    ["repository", "other/project"],
+    ["commit", "f".repeat(40)],
+    ["corpusRevision", imageDigest],
+    ["image", `ghcr.io/other/project@${imageDigest}`],
+    ["imageId", `sha256:${"e".repeat(64)}`],
+  ]) {
+    const expected = {
+      repository: record.repository,
+      commit,
+      corpusRevision,
+      image: record.image,
+      imageId,
+      [field]: value,
+    };
+    assert.throws(
+      () => validateExpectedDeploymentRecord(record, expected),
+      new RegExp(field, "iu"),
+    );
+  }
+
+  for (const weakened of [
+    { ...record, image: "ghcr.io/starsumi/sumi-docs:latest" },
+    { ...record, commit: "main" },
+    { ...record, corpusRevision: `sha256:${"e".repeat(63)}` },
+    { ...record, imageId: "sumi-docs-mcp:local" },
+    { ...record, unexpected: true },
+  ]) {
+    assert.throws(() => validateDeploymentRecord(weakened));
+  }
+
+  const ready = {
+    status: "ready",
+    buildRevision: commit,
+    corpus: { documentCount: 38, revision: corpusRevision },
+  };
+  assert.doesNotThrow(() =>
+    validateReadyEvidence(ready, { commit, corpusRevision }),
+  );
+  assert.throws(
+    () =>
+      validateReadyEvidence(
+        { ...ready, buildRevision: "f".repeat(40) },
+        { commit, corpusRevision },
+      ),
+    /build revision/u,
+  );
+  assert.throws(
+    () =>
+      validateReadyEvidence(
+        { ...ready, corpus: { ...ready.corpus, revision: imageDigest } },
+        { commit, corpusRevision },
+      ),
+    /corpus revision/u,
+  );
+});
+
+test("validated deployment envelopes bind exact source bytes", () => {
+  const record = {
+    schemaVersion: 1,
+    repository: "starSumi/sumi-docs",
+    commit: "a".repeat(40),
+    corpusRevision: `sha256:${"b".repeat(64)}`,
+    image: `ghcr.io/starsumi/sumi-docs@sha256:${"c".repeat(64)}`,
+    imageId: `sha256:${"d".repeat(64)}`,
+  };
+  const sourceBytes = Buffer.from(JSON.stringify(record));
+  const validated = validateDeploymentRecord(JSON.parse(sourceBytes));
+  const envelope = createEvidenceEnvelope(
+    "deployment-record",
+    sourceBytes,
+    validated,
+  );
+  assert.deepEqual(envelope.value, record);
+  assert.equal(
+    envelope.evidenceSha256,
+    `sha256:${createHash("sha256").update(sourceBytes).digest("hex")}`,
+  );
+
+  const replacedBytes = Buffer.from(`${JSON.stringify(record)}\n`);
+  assert.notEqual(
+    createEvidenceEnvelope(
+      "deployment-record",
+      replacedBytes,
+      validateDeploymentRecord(JSON.parse(replacedBytes)),
+    ).evidenceSha256,
+    envelope.evidenceSha256,
+    "even a byte-preserving semantic replacement must have a different evidence hash",
+  );
+  assert.equal(envelope.value.image, record.image);
+  assert.throws(() =>
+    validateDeploymentRecord({ ...record, unknownField: "unreviewed" }),
+  );
+});
+
+test("production compensation follows the reviewed job-result table", () => {
+  const base = {
+    remoteEnabled: true,
+    mcpRollbackPending: true,
+    pagesPhase: "success",
+    finalAcceptance: "success",
+    finalizeMcp: "success",
+  };
+  const cases = [
+    {
+      name: "accepted tuple",
+      state: base,
+      expected: { restorePages: false, mcpRollbackRequired: false },
+    },
+    {
+      name: "Pages deployment failure after MCP switch",
+      state: {
+        ...base,
+        pagesPhase: "failure",
+        finalAcceptance: "skipped",
+        finalizeMcp: "skipped",
+      },
+      expected: { restorePages: true, mcpRollbackRequired: true },
+    },
+    {
+      name: "Pages deployment cancellation after MCP switch",
+      state: {
+        ...base,
+        pagesPhase: "cancelled",
+        finalAcceptance: "skipped",
+        finalizeMcp: "skipped",
+      },
+      expected: { restorePages: true, mcpRollbackRequired: true },
+    },
+    {
+      name: "public acceptance failure",
+      state: { ...base, finalAcceptance: "failure", finalizeMcp: "skipped" },
+      expected: { restorePages: true, mcpRollbackRequired: true },
+    },
+    {
+      name: "remote finalization failure",
+      state: { ...base, finalizeMcp: "failure" },
+      expected: { restorePages: true, mcpRollbackRequired: true },
+    },
+    {
+      name: "idempotent stage followed by a later failure",
+      state: {
+        ...base,
+        mcpRollbackPending: false,
+        finalAcceptance: "failure",
+        finalizeMcp: "skipped",
+      },
+      expected: { restorePages: true, mcpRollbackRequired: false },
+    },
+    {
+      name: "switch succeeded but evidence upload failed before Pages",
+      state: {
+        ...base,
+        pagesPhase: "not-attempted",
+        finalAcceptance: "skipped",
+        finalizeMcp: "skipped",
+      },
+      expected: { restorePages: false, mcpRollbackRequired: true },
+    },
+    {
+      name: "publish or deploy failed before Pages without a switch",
+      state: {
+        ...base,
+        mcpRollbackPending: false,
+        pagesPhase: "not-attempted",
+        finalAcceptance: "skipped",
+        finalizeMcp: "skipped",
+      },
+      expected: { restorePages: false, mcpRollbackRequired: false },
+    },
+    {
+      name: "Pages-only failure before the deploy action",
+      state: {
+        ...base,
+        remoteEnabled: false,
+        mcpRollbackPending: false,
+        pagesPhase: "not-attempted",
+        finalAcceptance: "skipped",
+        finalizeMcp: "skipped",
+      },
+      expected: { restorePages: false, mcpRollbackRequired: false },
+    },
+  ];
+
+  for (const testCase of cases) {
+    assert.deepEqual(
+      decideProductionCompensation(testCase.state),
+      testCase.expected,
+      testCase.name,
+    );
+  }
+
+  const required = { restorePages: true, mcpRollbackRequired: true };
+  assert.equal(mayRollbackMcp(required, "success"), true);
+  for (const result of ["failure", "cancelled", "skipped"]) {
+    assert.equal(
+      mayRollbackMcp(required, result),
+      false,
+      `MCP rollback must wait when Pages compensation is ${result}`,
+    );
+  }
+  assert.equal(
+    mayRollbackMcp(
+      { restorePages: false, mcpRollbackRequired: true },
+      "skipped",
+    ),
+    true,
+  );
+  assert.throws(() =>
+    decideProductionCompensation({ ...base, pagesPhase: "unknown" }),
+  );
+});
+
+test("Pages phase evidence is explicit and unknown combinations fail closed", () => {
+  const cases = [
+    ["skipped", null, "not-attempted"],
+    ["skipped", "skipped", "not-attempted"],
+    ["cancelled", "skipped", "not-attempted"],
+    ["success", "success", "success"],
+    ["failure", "failure", "failure"],
+    ["cancelled", "cancelled", "cancelled"],
+  ];
+  for (const [jobConclusion, stepConclusion, expected] of cases) {
+    assert.equal(
+      classifyPagesPhaseEvidence({ jobConclusion, stepConclusion }),
+      expected,
+    );
+  }
+  for (const evidence of [
+    { jobConclusion: "success", stepConclusion: null },
+    { jobConclusion: "failure", stepConclusion: "skipped" },
+    { jobConclusion: "cancelled", stepConclusion: null },
+    { jobConclusion: "success", stepConclusion: "failure" },
+  ]) {
+    assert.throws(
+      () => classifyPagesPhaseEvidence(evidence),
+      /Pages phase evidence/u,
+    );
+  }
+});
+
+test("failed-run recovery separates Pages phase from remote rollback evidence", () => {
+  const workflows = loadWorkflowPolicyInput();
+  const recoveryStep = workflows.recovery.jobs.observe.steps.find(
+    (step) => step.id === "evidence",
+  );
+  const run = String(recoveryStep?.run ?? "");
+
+  assert.match(run, /pages_phase/u);
+  assert.match(run, /pages-required=false/u);
+  assert.match(run, /record-present=/u);
+  assert.doesNotMatch(run, /rollback_count[^]*pages-required=true/u);
+  assert.match(
+    String(workflows.recovery.jobs["restore-mcp"].if),
+    /observe-switch\.outputs\.rollback-required/u,
+  );
+});
+
+test("production workflows never derive outputs from raw JSON after validation", () => {
+  const exact = loadWorkflowPolicyInput();
+
+  const weakenedRelease = structuredClone(exact);
+  const releaseSwitch = weakenedRelease.pages.jobs["deploy-mcp"].steps.find(
+    (step) => step.id === "switch",
+  );
+  releaseSwitch.run = releaseSwitch.run.replaceAll(
+    "switch.validated.json",
+    "switch.json",
+  );
+  assert.ok(
+    validateWorkflowPolicy(weakenedRelease).some((error) =>
+      error.includes("validated evidence envelopes"),
+    ),
+  );
+
+  const weakenedRecovery = structuredClone(exact);
+  const recoveryRecord = weakenedRecovery.recovery.jobs[
+    "observe-switch"
+  ].steps.find((step) => step.id === "record");
+  recoveryRecord.run = recoveryRecord.run.replaceAll(
+    "deployment.validated.json",
+    "deployment.json",
+  );
+  assert.ok(
+    validateWorkflowPolicy(weakenedRecovery).some((error) =>
+      error.includes("validated evidence envelopes"),
+    ),
+  );
+});
+
+test("production recovery uses durable switch and explicit Pages phase evidence", () => {
+  const workflows = loadWorkflowPolicyInput();
+  const pagesJobs = workflows.pages.jobs;
+  const switchObservation = pagesJobs["observe-switch"];
+  assert.ok(switchObservation);
+  assert.match(
+    String(
+      switchObservation.steps.find(
+        (step) => step.name === "Observe the durable remote switch transaction",
+      )?.run ?? "",
+    ),
+    /switch-observation/u,
+  );
+  assert.ok(pagesJobs["deploy-pages"].needs.includes("observe-switch"));
+
+  const recoveryEvidence = workflows.recovery.jobs.observe.steps.find(
+    (step) => step.id === "evidence",
+  );
+  const recoveryRun = String(recoveryEvidence?.run ?? "");
+  assert.match(recoveryRun, /attempts\/\$FAILED_RUN_ATTEMPT\/jobs/u);
+  assert.match(recoveryRun, /pages-phase/u);
+  assert.doesNotMatch(recoveryRun, /rollback_count[^]*pages-required=true/u);
+  assert.ok(workflows.recovery.jobs["observe-switch"]);
+
+  const remoteScript = readFileSync("scripts/deploy-remote-mcp.sh", "utf8");
+  const stage = remoteScript.slice(
+    remoteScript.indexOf("stage()"),
+    remoteScript.indexOf("finalize()"),
+  );
+  assert.match(remoteScript, /transaction_name/u);
+  assert.match(remoteScript, /terminal_name/u);
+  assert.match(remoteScript, /write_transaction_terminal/u);
+  assert.match(remoteScript, /complete-rollback/u);
+  assert.match(remoteScript, /observe\)/u);
+  assert.match(remoteScript, /state":"prepared"/u);
+  assert.ok(
+    stage.indexOf("write_transaction_intent") < stage.indexOf("docker stop"),
+    "durable intent must precede mutation of the stable container",
+  );
+  assert.ok(
+    stage.indexOf('wait_until_ready "$stable_name"') <
+      stage.indexOf("write_transaction_completion"),
+    "completion evidence must follow stable readiness",
+  );
+
+  const rollback = remoteScript.slice(
+    remoteScript.indexOf("rollback()"),
+    remoteScript.indexOf('command="${1:-}"'),
+  );
+  assert.ok(
+    rollback.lastIndexOf("write_transaction_terminal") <
+      rollback.lastIndexOf("printf"),
+    "rollback terminal evidence must precede the success response",
+  );
+  const releaseRollback = pagesJobs["rollback-mcp"].steps;
+  assert.ok(
+    releaseRollback.findIndex(
+      (step) => step.name === "Verify the compensated public tuple",
+    ) <
+      releaseRollback.findIndex(
+        (step) => step.name === "Complete the compensated remote transaction",
+      ),
+    "public rollback readback must precede terminal cleanup",
+  );
+});
+
+test("production artifact inventory is bound to run ID and attempt", () => {
+  const attempt1 = productionArtifactNames("700", "1");
+  const attempt2 = productionArtifactNames("700", "2");
+  assert.notDeepEqual(attempt1, attempt2);
+  const inventory = {
+    artifacts: [
+      { id: 1, name: attempt1.record, expired: false },
+      { id: 2, name: attempt1.switch, expired: false },
+      { id: 3, name: attempt1.rollbackPages, expired: false },
+      { id: 4, name: attempt2.record, expired: false },
+      { id: 5, name: attempt2.switch, expired: false },
+      { id: 6, name: attempt2.rollbackPages, expired: false },
+    ],
+  };
+  assert.deepEqual(selectRecoveryArtifacts(inventory, "700", "2"), {
+    names: attempt2,
+    recordIds: [4],
+    switchIds: [5],
+    rollbackPagesIds: [6],
+  });
+
+  const workflows = loadWorkflowPolicyInput();
+  assert.equal(
+    workflows.pages.jobs.build.outputs["image-artifact"],
+    "mcp-image-${{ github.run_id }}-${{ github.run_attempt }}",
+  );
+  assert.match(
+    String(
+      workflows.recovery.jobs.observe.steps.find(
+        (step) => step.id === "evidence",
+      )?.run ?? "",
+    ),
+    /artifact-inventory[^]*FAILED_RUN_ATTEMPT/u,
+  );
+});
+
+test("production origins are normalized before the MCP CLI boundary", () => {
+  const workflows = loadWorkflowPolicyInput();
+  const remotePreflight = workflows.pages.jobs["remote-preflight"];
+  assert.equal(
+    remotePreflight.outputs["allowed-origin-hosts"],
+    "${{ steps.config.outputs.allowed-origin-hosts }}",
+  );
+  const endpointRun = String(
+    remotePreflight.steps.find(
+      (step) => step.name === "Validate public endpoint configuration",
+    )?.run ?? "",
+  );
+  assert.match(endpointRun, /origin-hosts/u);
+  const switchStep = workflows.pages.jobs["deploy-mcp"].steps.find(
+    (step) => step.id === "switch",
+  );
+  assert.equal(
+    switchStep.env.DEPLOY_ALLOWED_ORIGIN_HOSTS,
+    "${{ needs.build.outputs.allowed-origin-hosts }}",
+  );
+  assert.equal(
+    switchStep.env.DEPLOY_ALLOWED_HOSTS,
+    "${{ needs.build.outputs.allowed-hosts }}",
+  );
+  assert.doesNotMatch(String(switchStep.run), /\$DEPLOY_ALLOWED_ORIGINS/u);
+
+  const entrypoint = readFileSync(
+    "packages/mcp/scripts/container-entrypoint.mjs",
+    "utf8",
+  );
+  assert.match(entrypoint, /commaSeparated\("SUMI_DOCS_ALLOWED_ORIGINS"\)/u);
+  assert.match(
+    entrypoint,
+    /repeatedOption\("--allowed-origin", allowedOrigins\)/u,
+  );
+  const deployment = readFileSync("scripts/deploy-remote-mcp.sh", "utf8");
+  assert.match(deployment, /SUMI_DOCS_ALLOWED_ORIGINS=\$allowed_origin_hosts/u);
+  assert.match(deployment, /require_hostname_csv/u);
+  assert.match(
+    deployment,
+    /require_hostname_csv "\$allowed_hosts" "allowed hosts"/u,
+  );
+  assert.match(
+    deployment,
+    /require_hostname_csv "\$allowed_origin_hosts" "allowed origin hosts"/u,
+  );
+});
+
+test("switch and rollback evidence distinguish changed and idempotent stages", () => {
+  const expected = {
+    commit: "a".repeat(40),
+    image: `ghcr.io/starsumi/sumi-docs@sha256:${"b".repeat(64)}`,
+    imageId: `sha256:${"c".repeat(64)}`,
+  };
+  const idempotent = {
+    schemaVersion: 1,
+    changed: false,
+    token: expected.commit.slice(0, 12),
+    newImage: expected.image,
+    newImageId: expected.imageId,
+    oldImage: null,
+    oldImageId: null,
+  };
+  assert.deepEqual(validateSwitchRecord(idempotent, expected), idempotent);
+  assert.throws(() =>
+    validateSwitchRecord(
+      { ...idempotent, oldImageId: `sha256:${"d".repeat(64)}` },
+      expected,
+    ),
+  );
+
+  const changed = {
+    ...idempotent,
+    changed: true,
+    oldImage: `ghcr.io/starsumi/sumi-docs@sha256:${"e".repeat(64)}`,
+    oldImageId: `sha256:${"f".repeat(64)}`,
+  };
+  assert.deepEqual(validateSwitchRecord(changed, expected), changed);
+  assert.throws(() =>
+    validateSwitchRecord({ ...changed, token: "wrong-token" }, expected),
+  );
+
+  assert.deepEqual(
+    validateSwitchObservation(
+      {
+        schemaVersion: 1,
+        state: "changed",
+        priorState: "present",
+        rollbackRequired: true,
+        switch: changed,
+      },
+      expected,
+    ),
+    {
+      schemaVersion: 1,
+      state: "changed",
+      priorState: "present",
+      rollbackRequired: true,
+      switch: changed,
+    },
+  );
+  assert.deepEqual(
+    validateSwitchObservation(
+      {
+        schemaVersion: 1,
+        state: "idempotent",
+        priorState: "absent",
+        rollbackRequired: false,
+        switch: idempotent,
+      },
+      expected,
+    ),
+    {
+      schemaVersion: 1,
+      state: "idempotent",
+      priorState: "absent",
+      rollbackRequired: false,
+      switch: idempotent,
+    },
+  );
+  assert.deepEqual(
+    validateSwitchObservation(
+      {
+        schemaVersion: 1,
+        state: "absent",
+        priorState: "absent",
+        rollbackRequired: false,
+        switch: null,
+      },
+      expected,
+    ),
+    {
+      schemaVersion: 1,
+      state: "absent",
+      priorState: "absent",
+      rollbackRequired: false,
+      switch: null,
+    },
+  );
+  assert.deepEqual(
+    validateSwitchObservation(
+      {
+        schemaVersion: 1,
+        state: "prepared",
+        priorState: "present",
+        rollbackRequired: true,
+        switch: null,
+      },
+      expected,
+    ),
+    {
+      schemaVersion: 1,
+      state: "prepared",
+      priorState: "present",
+      rollbackRequired: true,
+      switch: null,
+    },
+  );
+  for (const state of ["committed", "rolled-back"]) {
+    const terminal = {
+      schemaVersion: 1,
+      state,
+      priorState: "present",
+      rollbackRequired: false,
+      switch: null,
+    };
+    assert.deepEqual(validateSwitchObservation(terminal, expected), terminal);
+    assert.throws(() =>
+      validateSwitchObservation(
+        { ...terminal, rollbackRequired: true },
+        expected,
+      ),
+    );
+  }
+  assert.throws(() =>
+    validateSwitchObservation(
+      {
+        schemaVersion: 1,
+        state: "changed",
+        priorState: "present",
+        rollbackRequired: true,
+        switch: null,
+      },
+      expected,
+    ),
+  );
+
+  const rollback = {
+    schemaVersion: 1,
+    restored: true,
+    image: changed.oldImage,
+    imageId: changed.oldImageId,
+    buildRevision: "d".repeat(40),
+    corpusRevision: `sha256:${"e".repeat(64)}`,
+  };
+  assert.deepEqual(validateRollbackRecord(rollback), rollback);
+  assert.throws(() =>
+    validateRollbackRecord({ ...rollback, corpusRevision: "unknown" }),
+  );
+});
+
+test("prior Pages rollback provenance is content-addressed and repository-bound", () => {
+  const manifest = JSON.parse(
+    readFileSync(
+      "packages/corpus-contract/fixtures/valid/manifest-v2.json",
+      "utf8",
+    ),
+  );
+  const manifestBytes = Buffer.from(JSON.stringify(manifest));
+  const revisionHex = manifest.revision.slice("sha256:".length);
+  const locatorBytes = Buffer.from(
+    JSON.stringify({
+      version: 2,
+      revision: manifest.revision,
+      manifest: `snapshots/${revisionHex}/manifest.json`,
+      bytes: manifestBytes.byteLength,
+      sha256: createHash("sha256").update(manifestBytes).digest("hex"),
+    }),
+  );
+  assert.deepEqual(
+    validatePriorSiteManifest(locatorBytes, manifestBytes, {
+      repository: "https://github.com/starSumi/sumi-docs",
+    }),
+    {
+      commit: "a".repeat(40),
+      manifest: `snapshots/${revisionHex}/manifest.json`,
+    },
+  );
+  assert.throws(
+    () =>
+      validatePriorSiteManifest(locatorBytes, manifestBytes, {
+        repository: "https://github.com/other/project",
+      }),
+    /provenance/u,
+  );
+  const alteredManifest = Buffer.from(manifestBytes);
+  alteredManifest[0] ^= 1;
+  assert.throws(
+    () =>
+      validatePriorSiteManifest(locatorBytes, alteredManifest, {
+        repository: "https://github.com/starSumi/sumi-docs",
+      }),
+    /integrity/u,
+  );
+
+  const discovery = Buffer.from(
+    '{"remotes":[{"type":"streamable-http","url":"https://docs.example/mcp"}]}',
+  );
+  assert.deepEqual(
+    validatePriorDiscovery({
+      liveStatus: 200,
+      artifactStatus: 200,
+      liveBytes: discovery,
+      artifactBytes: discovery,
+    }),
+    { status: 200 },
+  );
+  assert.deepEqual(
+    validatePriorDiscovery({
+      liveStatus: 404,
+      artifactStatus: 404,
+      liveBytes: null,
+      artifactBytes: null,
+    }),
+    { status: 404 },
+  );
+  assert.throws(() =>
+    validatePriorDiscovery({
+      liveStatus: 200,
+      artifactStatus: 200,
+      liveBytes: discovery,
+      artifactBytes: Buffer.from(
+        '{"remotes":[{"type":"streamable-http","url":"https://other.example/mcp"}]}',
+      ),
+    }),
+  );
+  assert.throws(() =>
+    validatePriorDiscovery({
+      liveStatus: 404,
+      artifactStatus: 200,
+      liveBytes: null,
+      artifactBytes: discovery,
+    }),
+  );
+
+  const workflows = loadWorkflowPolicyInput();
+  const priorRun = String(
+    workflows.pages.jobs.build.steps.find(
+      (step) =>
+        step.name === "Observe the prior site and preserve its Pages artifact",
+    )?.run ?? "",
+  );
+  assert.match(priorRun, /_mcp\/server\.json/u);
+  assert.match(priorRun, /prior-discovery/u);
+});
+
+test("production endpoint configuration is explicit HTTPS bootstrap input", () => {
+  const configuration = {
+    mcpUrl: "https://docs.example.test/mcp",
+    readinessUrl: "https://docs.example.test/readyz",
+    allowedHosts: "docs.example.test,localhost,127.0.0.1",
+    allowedOrigins: "https://docs.example.test",
+  };
+  assert.deepEqual(
+    validateProductionEndpointConfiguration(configuration),
+    configuration,
+  );
+  assert.deepEqual(
+    validateProductionEndpointConfiguration({
+      ...configuration,
+      allowedOrigins: "https://docs.example.test:443",
+    }),
+    { ...configuration, allowedOrigins: "https://docs.example.test:443" },
+  );
+  assert.deepEqual(
+    deriveAllowedOriginHosts(
+      "https://docs.example.test:8443,https://b\u00fccher.example",
+    ),
+    ["docs.example.test", "xn--bcher-kva.example"],
+  );
+  for (const origins of [
+    "https://docs.example.test,https://docs.example.test:8443",
+    "https://b\u00fccher.example,https://xn--bcher-kva.example",
+    "https://docs.example.test/path",
+    "http://docs.example.test",
+  ]) {
+    assert.throws(() => deriveAllowedOriginHosts(origins));
+  }
+  for (const weakened of [
+    { ...configuration, mcpUrl: "http://docs.example.test/mcp" },
+    { ...configuration, readinessUrl: "https://other.example.test/readyz" },
+    { ...configuration, allowedHosts: "localhost,127.0.0.1" },
+    { ...configuration, allowedOrigins: "*" },
+    { ...configuration, extra: "unreviewed" },
+  ]) {
+    assert.throws(() => validateProductionEndpointConfiguration(weakened));
+  }
 });
 
 test("Pages publication fails closed after an upstream failure", () => {
@@ -773,26 +1550,80 @@ test("Pages publication fails closed after an upstream failure", () => {
     {
       mutate(workflows) {
         workflows.pages.jobs.build.steps.find(
-          (step) => step.id === "freshness",
-        ).if = "${{ !cancelled() }}";
+          (step) =>
+            step.name ===
+            "Observe the prior site and preserve its Pages artifact",
+        ).run = "echo site=true >> $GITHUB_OUTPUT";
       },
-      expected: "verified Web artifact",
+      expected: "rollback evidence",
     },
     {
       mutate(workflows) {
         workflows.pages.jobs.build.steps.find(
           (step) => step.name === "Upload verified Pages artifact",
-        ).if =
-          "${{ !cancelled() && steps.freshness.outputs.current == 'true' }}";
+        ).with.path = ".";
       },
-      expected: "verified Web artifact",
+      expected: "rollback evidence",
     },
     {
       mutate(workflows) {
-        workflows.pages.jobs.deploy.if =
-          "${{ github.ref == 'refs/heads/main' && !cancelled() }}";
+        workflows.pages.jobs["deploy-pages"].needs = "build";
       },
-      expected: "deployment authority",
+      expected: "Pages promotion",
+    },
+    {
+      mutate(workflows) {
+        const step = workflows.pages.jobs["deploy-mcp"].steps.find(
+          (candidate) => candidate.id === "switch",
+        );
+        step.run = step.run.replace("trap 'rollback 143' TERM", "true");
+      },
+      expected: "immediate compensation",
+    },
+    {
+      mutate(workflows) {
+        const step = workflows.pages.jobs["deploy-mcp"].steps.find(
+          (candidate) => candidate.id === "switch",
+        );
+        step.run = step.run.replace(
+          'echo "switched=$switched"',
+          "echo 'switched=true'",
+        );
+      },
+      expected: "Remote MCP deployment",
+    },
+    {
+      mutate(workflows) {
+        workflows.pages.jobs["compensation-plan"].steps.find(
+          (candidate) =>
+            candidate.name === "Compute the table-driven compensation plan",
+        ).run = "echo restore-pages=false >> $GITHUB_OUTPUT";
+      },
+      expected: "Production compensation",
+    },
+    {
+      mutate(workflows) {
+        workflows.pages.jobs["rollback-mcp"].if = workflows.pages.jobs[
+          "rollback-mcp"
+        ].if.replace(
+          "needs.rollback-pages.result == 'success'",
+          "needs.rollback-pages.result != 'success'",
+        );
+      },
+      expected: "Production compensation",
+    },
+    {
+      mutate(workflows) {
+        const step = workflows.pages.jobs["final-acceptance"].steps.find(
+          (candidate) =>
+            candidate.name === "Verify the public Pages publication",
+        );
+        step.run = step.run.replace(
+          'site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"',
+          'site_root="https://example.invalid"',
+        );
+      },
+      expected: "Final acceptance",
     },
   ];
 

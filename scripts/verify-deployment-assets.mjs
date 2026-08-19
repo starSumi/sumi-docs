@@ -130,13 +130,27 @@ function validateDockerAssets(errors) {
     dockerfile.includes("/data/docs/") &&
       dockerfile.includes("/readyz") &&
       dockerfile.includes("SUMI_DOCS_ALLOWED_HOSTS=localhost,127.0.0.1"),
-    "The MCP image must include the default corpus and a readiness probe.",
+    "The local MCP image must include the default corpus and a readiness probe.",
+    errors,
+  );
+  requireCondition(
+    dockerfile.includes("FROM runtime-base AS local") &&
+      dockerfile.includes("FROM runtime-base AS production") &&
+      dockerfile.includes(
+        "SUMI_DOCS_SOURCE=/opt/sumi-docs/corpus/v2/current.json",
+      ) &&
+      dockerfile.includes(
+        "COPY --from=corpus --chown=node:node . /opt/sumi-docs/corpus/",
+      ) &&
+      !dockerfile.includes("build-machine-projection.mjs"),
+    "The production image must consume one externally sealed corpus context without publishing another projection.",
     errors,
   );
 
   requireCondition(
-    service?.build?.dockerfile === "Dockerfile.mcp",
-    "compose.yaml must build Dockerfile.mcp.",
+    service?.build?.dockerfile === "Dockerfile.mcp" &&
+      service?.build?.target === "local",
+    "compose.yaml must build the local Dockerfile.mcp target.",
     errors,
   );
   requireCondition(

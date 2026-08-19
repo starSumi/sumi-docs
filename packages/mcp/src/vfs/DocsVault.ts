@@ -19,6 +19,7 @@ import {
 } from "../parser/index.js";
 import type { OpenAPISpec } from "../parser/index.js";
 import { loadRemoteCorpus } from "./remote-source.js";
+import { loadLocalCorpus } from "./local-source.js";
 import {
   toRelativePath,
   isMarkdownFile,
@@ -83,6 +84,26 @@ export class DocsVault {
   /** Load a bounded read-only corpus declared by a remote JSON manifest. */
   async loadFromRemoteManifest(manifestUrl: string): Promise<void> {
     const corpus = await loadRemoteCorpus(manifestUrl);
+    await this.commitCorpus(corpus);
+  }
+
+  /** Load a verified immutable corpus from a local v2 current locator. */
+  async loadFromLocalManifest(locatorPath: string): Promise<void> {
+    const corpus = await loadLocalCorpus(locatorPath);
+    await this.commitCorpus(corpus);
+  }
+
+  private async commitCorpus(corpus: {
+    documents: Array<{
+      path: string;
+      content: string;
+      route?: string;
+      lastModified?: Date;
+      sourceUrl?: string;
+    }>;
+    openApiContent?: string;
+    revision?: string;
+  }): Promise<void> {
     const nextNodes = new Map<string, DocNode>();
 
     for (const document of corpus.documents) {

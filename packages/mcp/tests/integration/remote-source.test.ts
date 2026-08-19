@@ -10,6 +10,8 @@ import {
   sealManifestV2,
 } from "@sumi-os/corpus-contract";
 import { DocsMcpServer } from "../../src/mcp/server.js";
+import { parseCliOptions } from "../../src/cli.js";
+import { createDoctorReport } from "../../src/doctor.js";
 import { DocsVault } from "../../src/vfs/DocsVault.js";
 
 const manifest = JSON.stringify({
@@ -136,6 +138,14 @@ test("DocsVault loads a complete remote corpus from a manifest", async () => {
         "/docs/openapi.json",
       ]),
     );
+
+    const doctor = await createDoctorReport(
+      parseCliOptions(["serve", docsUrl])!,
+      process.cwd(),
+      "25.5.0",
+    );
+    assert.equal(doctor.source.kind, "remote");
+    assert.equal(doctor.source.format, "manifest-v1");
 
     const mcp = new DocsMcpServer(vault);
     const [clientTransport, serverTransport] =
@@ -270,6 +280,15 @@ test("DocsVault verifies and loads an immutable v2 corpus snapshot", async () =>
       vault.getDoc("guide.md")?.sourceUrl ?? "",
       /\/snapshots\/[a-f0-9]{64}\/docs\/guide\.md$/,
     );
+
+    const doctor = await createDoctorReport(
+      parseCliOptions(["serve", locatorUrl])!,
+      process.cwd(),
+      "25.5.0",
+    );
+    assert.equal(doctor.source.kind, "remote");
+    assert.equal(doctor.source.format, "manifest-v2");
+    assert.equal(doctor.source.corpusRevision, locator.revision);
 
     servedGuide = `${guide}\ncorrupted`;
     await assert.rejects(

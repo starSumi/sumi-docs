@@ -30,8 +30,16 @@ export function buildDocumentUrl(
   route?: string,
 ): string {
   if (route) {
+    const base = new URL(baseUrl);
     const relativeRoute = route === "/" ? "" : route.replace(/^\/+/, "");
-    return new URL(relativeRoute, baseUrl).href;
+    const resolved = new URL(relativeRoute ? `./${relativeRoute}` : "", base);
+    if (
+      resolved.protocol !== base.protocol ||
+      resolved.origin !== base.origin
+    ) {
+      throw new Error("Document route must remain within the base URL origin.");
+    }
+    return resolved.href;
   }
 
   const segments = documentPath

@@ -32,6 +32,21 @@ pnpm run verify:integration
 保留上一个已验收的不可变产物。回滚时恢复该产物或部署，然后重新验证根页面、
 本地化路由和 `/_mcp/` 投影。
 
-`Documentation site` 工作流会单独把经过验证的最新 `main` 提交部署到 GitHub Pages。
-它从 Pages 配置取得公开源地址和基础路径，并在上传前验证完整站点和 MCP 投影。Pages
-部署不会发布 npm 包、Windows 可执行文件、Git 标签或 GitHub Release。
+`Production documentation release` 工作流会部署经过验证的最新 `main` 提交。
+`ENABLE_REMOTE_MCP` 未设置或为 `false` 时，它只发布 Pages：不会访问远程 environment、
+SSH secret、容器镜像或 MCP discovery record。工作流从 Pages 配置取得公开源地址和基础
+路径，并要求 `_mcp/server.json` 不存在。
+
+将仓库变量 `ENABLE_REMOTE_MCP` 设为 `true` 后，工作流才会进入经过评审的双目标阶段。
+受保护的 `production-mcp` environment 必须提供公开 MCP 与 readiness URL、Host 与 Origin
+策略、SSH 目标、私钥和固定的 known-hosts 材料。一次绑定 commit 的构建只密封一次机器
+投影，再把相同的 v2 字节放入 Pages artifact 与 OCI image，并记录 corpus revision、
+image digest 和 image ID。
+
+提升前，工作流保留精确的旧 Pages artifact，并保留旧 MCP container，直到公开读回成功。
+它先切换 MCP candidate，再部署 Pages，然后验证公开 locator 以及 discovery metadata 的
+缺失或精确内容，最后完成远程切换。后续步骤失败时，先恢复 Pages，再恢复 MCP。运行中断
+时，recovery workflow 使用同一次运行绑定的证据进行补偿，不会重新构建旧产物。第一次
+发布站点因没有旧产物，必须手动 dispatch 并明确确认 `bootstrap`。
+
+该生产工作流不会发布 npm package、Windows 可执行文件、Git tag 或 GitHub Release。

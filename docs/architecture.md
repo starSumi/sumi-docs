@@ -4,8 +4,10 @@ description: Separate the human presentation plane from the read-only MCP data p
 ---
 
 The website, MCP server, and corpus contract are independently owned packages
-in one pnpm workspace. Web and MCP have separate build and release lifecycles;
-only schemas, canonicalization, and conformance helpers are shared.
+in one pnpm workspace. Web and MCP remain separately deployable, while a public
+product release binds both artifacts to one commit and one machine-projection
+revision. Only schemas, canonicalization, and conformance helpers are shared at
+runtime.
 
 The human surface keeps English at the root for stable existing links and
 serves a complete Simplified Chinese translation at `/zh-cn/`. Starlight's
@@ -22,14 +24,17 @@ content digests, navigation data, source provenance, and an immutable revision.
 ```text
 reviewed docs/ + content catalog + OpenAPI
         |
-        +-- Astro + Starlight -> rendered pages and Pagefind
-        |
-        +-- publishing integration -> v1 + immutable v2 snapshot
-                                              |
-                                              v
-                                  one read-only DocsMcpServer core
-                                  /                           \
-                              stdio                 Streamable HTTP
+        +-- one publisher build
+              |
+              +-- rendered pages and Pagefind
+              |
+              +-- exact v1 + immutable v2 projection bytes
+                             /                    \
+                    static Web artifact     MCP service image
+                                                   |
+                                      one read-only DocsMcpServer core
+                                      /                           \
+                                  stdio                 Streamable HTTP
 ```
 
 ## Ownership
@@ -39,6 +44,10 @@ published corpus projection. The corpus-contract package owns pure manifest
 validation and canonicalization. Sumi-Docs-MCP owns bounded acquisition,
 non-executing document parsing, public tools, input validation, and stdio plus
 stateless Streamable HTTP adapters.
+
+One commit-bound publisher build creates the machine projection once. The Web
+artifact and service image consume those exact locator, manifest, document, and
+OpenAPI bytes; neither target independently recomputes a second projection.
 
 ## Address and client model
 

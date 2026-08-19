@@ -34,6 +34,18 @@ The MCP loader verifies the canonical manifest, revision, byte counts, and
 SHA-256 digests. Directory and v1 manifest URLs remain supported for backward
 compatibility.
 
+The same v2 projection can be consumed from its exact local locator after a Web
+build or artifact extraction:
+
+```powershell
+node packages/mcp/dist/index.js serve ./apps/web/dist/_mcp/v2/current.json --base-url http://127.0.0.1:4321/
+```
+
+Local and remote v2 sources share the manifest and integrity contract. The
+local path is additionally checked for lexical and real-path containment. The
+locator is the only supported v2 entry point, and its manifest supplies
+OpenAPI.
+
 The projection contains reviewed Markdown or MDX. General HTML crawling, DOM
 execution, and heuristic AST cleaning are deliberately outside the MCP core. A
 separate ingestion system must normalize, record provenance, and submit reviewed

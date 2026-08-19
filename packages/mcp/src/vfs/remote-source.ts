@@ -11,6 +11,7 @@ import type {
 } from "@sumi-os/corpus-contract";
 import {
   isRemoteDocsSource,
+  isRemoteV2LocatorSource,
   normalizeRemoteManifestUrl,
 } from "../utils/remote-source-url.js";
 
@@ -37,9 +38,7 @@ export interface RemoteCorpus {
 
 export { isRemoteDocsSource, normalizeRemoteManifestUrl };
 
-function isV2LocatorUrl(url: URL): boolean {
-  return url.pathname.endsWith("/_mcp/v2/current.json");
-}
+export { isRemoteV2LocatorSource } from "../utils/remote-source-url.js";
 
 async function readBoundedResponse(
   response: Response,
@@ -243,7 +242,7 @@ export async function loadRemoteCorpus(source: string): Promise<RemoteCorpus> {
     throw new Error("Remote documentation manifest is not valid JSON.");
   }
 
-  if (!isV2LocatorUrl(manifestUrl)) {
+  if (!isRemoteV2LocatorSource(manifestUrl)) {
     const entries = v1Entries(parseManifestV1(initialValue));
     return downloadCorpus(entries.documents, entries.openapi, manifestUrl);
   }

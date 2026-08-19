@@ -17,6 +17,8 @@ import {
   createPublication,
   normalizePublisherOptions,
   publishProjection,
+  resolveProvenance,
+  resolveRequiredProvenanceEnvironment,
   serializeRemoteServerMetadata,
 } from "../integrations/sumi-docs-publisher.mjs";
 import {
@@ -124,7 +126,7 @@ test("remote MCP discovery accepts only an explicit public HTTPS endpoint", () =
     description:
       "Read-only MCP access to the reviewed Sumi Docs documentation corpus.",
     repository: {
-      url: "https://github.com/starSumi/Sumi-Docs-MCP",
+      url: "https://github.com/starSumi/sumi-docs",
       source: "github",
       subfolder: "packages/mcp",
     },
@@ -200,6 +202,110 @@ test("remote MCP discovery accepts only an explicit public HTTPS endpoint", () =
       /remote MCP/i,
     );
   }
+});
+
+test("release provenance environment is all-or-nothing and canonical", () => {
+  assert.equal(
+    resolveRequiredProvenanceEnvironment({
+      repository: undefined,
+      commit: undefined,
+    }),
+    undefined,
+  );
+  assert.deepEqual(
+    resolveRequiredProvenanceEnvironment({
+      repository: "https://github.com/starSumi/sumi-docs.git",
+      commit: "0123456789abcdef0123456789abcdef01234567",
+    }),
+    {
+      repository: "https://github.com/starSumi/sumi-docs",
+      commit: "0123456789abcdef0123456789abcdef01234567",
+      dirty: false,
+    },
+  );
+  for (const value of [
+    { repository: "https://github.com/starSumi/sumi-docs" },
+    { commit: "0123456789abcdef0123456789abcdef01234567" },
+    { repository: 7, commit: "0123456789abcdef0123456789abcdef01234567" },
+    {
+      repository: "https://user:secret@github.com/starSumi/sumi-docs",
+      commit: "0123456789abcdef0123456789abcdef01234567",
+    },
+    {
+      repository: "https://github.com/starSumi/sumi-docs?token=not-allowed",
+      commit: "0123456789abcdef0123456789abcdef01234567",
+    },
+    {
+      repository: "https://github.com",
+      commit: "0123456789abcdef0123456789abcdef01234567",
+    },
+    {
+      repository: "https://github.com/starSumi/sumi-docs",
+      commit: "main",
+    },
+  ]) {
+    assert.throws(
+      () => resolveRequiredProvenanceEnvironment(value),
+      /release provenance/i,
+    );
+  }
+});
+
+test("release provenance is bound to the clean Git repository state", async () => {
+  const repositoryRoot = resolve("C:/workspace/sumi-docs");
+  const projectRoot = resolve(repositoryRoot, "apps/web");
+  const required = {
+    repository: "https://github.com/starSumi/sumi-docs",
+    commit: "0123456789abcdef0123456789abcdef01234567",
+    dirty: false,
+  };
+  const state = {
+    root: repositoryRoot,
+    remote: "git@github.com:starSumi/sumi-docs.git",
+    head: required.commit,
+    status: "",
+  };
+  const git = async (_root, args) => {
+    switch (args.join(" ")) {
+      case "rev-parse --show-toplevel":
+        return state.root;
+      case "config --get remote.origin.url":
+        return state.remote;
+      case "rev-parse HEAD":
+        return state.head;
+      case "status --porcelain=v1 --untracked-files=all":
+        return state.status;
+      default:
+        throw new Error("Unexpected Git command");
+    }
+  };
+
+  assert.deepEqual(
+    await resolveProvenance(projectRoot, undefined, required, git),
+    required,
+  );
+
+  for (const [field, value] of [
+    ["root", resolve(repositoryRoot, "../other-repository")],
+    ["remote", "https://github.com/example/other.git"],
+    ["head", "f".repeat(40)],
+    ["status", " M docs/index.md"],
+  ]) {
+    const previous = state[field];
+    state[field] = value;
+    await assert.rejects(
+      resolveProvenance(projectRoot, undefined, required, git),
+      /release provenance/i,
+    );
+    state[field] = previous;
+  }
+
+  await assert.rejects(
+    resolveProvenance(projectRoot, undefined, required, async () => {
+      throw new Error("raw Git path or credential");
+    }),
+    /^Error: Release provenance could not be verified\.$/,
+  );
 });
 
 test("remote MCP discovery is optional, exact, and covered by projection CAS", async () => {

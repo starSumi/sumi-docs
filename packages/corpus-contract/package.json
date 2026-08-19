@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Versioned Sumi documentation corpus schemas and conformance helpers.",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starSumi/sumi-docs.git",
+    "directory": "packages/corpus-contract"
+  },
+  "homepage": "https://github.com/starSumi/sumi-docs/tree/main/packages/corpus-contract#readme",
+  "bugs": {
+    "url": "https://github.com/starSumi/sumi-docs/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {

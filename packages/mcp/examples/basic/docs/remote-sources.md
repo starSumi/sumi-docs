@@ -43,6 +43,17 @@ verifies the byte count and SHA-256 digest of every document and optional
 OpenAPI file before accepting the snapshot. Supplying a v2 manifest directly
 is not supported; the mutable locator is the only v2 entry point.
 
+After a Web build or artifact extraction, the same v2 projection can be loaded
+from its exact local locator:
+
+```powershell
+node packages/mcp/dist/index.js serve ./apps/web/dist/_mcp/v2/current.json --base-url http://127.0.0.1:4321/
+```
+
+The local loader applies the same manifest and integrity checks plus lexical
+and real-path containment. It accepts only `_mcp/v2/current.json`, not a direct
+v2 manifest, and uses the manifest-declared OpenAPI document.
+
 HTTPS is required except for loopback HTTP used during local development. URLs
 with credentials, query strings, or fragments are rejected. Authentication
 headers and cookies are not supported; publish the corpus on a host the MCP

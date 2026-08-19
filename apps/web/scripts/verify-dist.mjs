@@ -18,6 +18,7 @@ import {
 } from "../src/site-config.ts";
 import {
   resolveRemoteMcpEnvironment,
+  resolveRequiredProvenanceEnvironment,
   serializeRemoteServerMetadata,
 } from "../integrations/sumi-docs-publisher.mjs";
 
@@ -34,6 +35,13 @@ const remoteMcp = resolveRemoteMcpEnvironment({
   publicMcpUrl: process.env.PUBLIC_MCP_URL,
   publicMcpReadinessUrl: process.env.PUBLIC_MCP_READINESS_URL,
   version: mcpPackage.version,
+});
+const requiredProvenance = resolveRequiredProvenanceEnvironment({
+  repository:
+    process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY
+      ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}`
+      : undefined,
+  commit: process.env.GITHUB_SHA,
 });
 const manifest = JSON.parse(
   await readFile(resolve(machineRoot, "sumi-docs-manifest.json"), "utf8"),
@@ -54,6 +62,13 @@ const manifestV2Path = resolve(
 const manifestV2Bytes = await readFile(manifestV2Path);
 const manifestV2 = parseLocatedManifestV2(current, manifestV2Bytes);
 assert.equal(manifestV2.revision, current.revision);
+if (requiredProvenance) {
+  assert.deepEqual(
+    manifestV2.provenance,
+    requiredProvenance,
+    "Published manifest is not bound to the required clean Git provenance",
+  );
+}
 const snapshotRoot = resolve(manifestV2Path, "..");
 
 async function discoverProjectedDocuments(root, relative = "") {
@@ -372,18 +387,12 @@ for (const sitemap of [...outputFiles].filter((path) =>
 assert.match(englishHome, /<main[^>]+lang="en"/);
 assert.match(englishHome, /href="getting-started\/"/);
 assert.match(englishHome, /href="configuration\/"/);
-assert.match(
-  englishHome,
-  /href="https:\/\/github\.com\/starSumi\/Sumi-Docs-MCP"/,
-);
+assert.match(englishHome, /href="https:\/\/github\.com\/starSumi\/sumi-docs"/);
 assert.match(chineseHome, /<main[^>]+lang="zh-CN"/);
 assert.match(chineseHome, />Sumi 文档<\/h1>/);
 assert.match(chineseHome, /href="getting-started\/"/);
 assert.match(chineseHome, /href="configuration\/"/);
-assert.match(
-  chineseHome,
-  /href="https:\/\/github\.com\/starSumi\/Sumi-Docs-MCP"/,
-);
+assert.match(chineseHome, /href="https:\/\/github\.com\/starSumi\/sumi-docs"/);
 assert.match(apiReference, /@sumi-os\/corpus-contract/);
 assert.match(apiReference, /<main[^>]+lang="en"/);
 assert.doesNotMatch(apiReference, /[A-Z]:\\/u);

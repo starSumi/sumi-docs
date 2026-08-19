@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.mcp
+      target: local
       args:
         VCS_REF: ${SUMI_DOCS_BUILD_REVISION:-}
     init: true

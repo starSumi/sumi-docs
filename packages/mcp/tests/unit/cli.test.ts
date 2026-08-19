@@ -46,6 +46,29 @@ test("parseCliOptions accepts a remote documentation manifest", () => {
   );
 });
 
+test("parseCliOptions accepts a local v2 locator and rejects external OpenAPI", () => {
+  assert.deepEqual(
+    parseCliOptions(["serve", "projection/_mcp/v2/current.json"]),
+    {
+      docsSource: "projection/_mcp/v2/current.json",
+      openApiPath: undefined,
+      baseUrl: undefined,
+      transport: "stdio",
+      verbose: false,
+    },
+  );
+  assert.throws(
+    () =>
+      parseCliOptions([
+        "serve",
+        "projection/_mcp/v2/current.json",
+        "--openapi",
+        "openapi.json",
+      ]),
+    /must declare OpenAPI in its manifest/iu,
+  );
+});
+
 test("parseCliOptions accepts a loopback Streamable HTTP endpoint", () => {
   assert.deepEqual(
     parseCliOptions([

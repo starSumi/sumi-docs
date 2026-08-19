@@ -2,8 +2,10 @@ import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { ParsedCLIOptions, ResolvedCLIOptions } from "./types/index.js";
 import { normalizeBaseUrl } from "./utils/document-url.js";
+import { isLocalV2LocatorPath } from "./utils/local-source-path.js";
 import {
   isRemoteDocsSource,
+  isRemoteV2LocatorSource,
   normalizeRemoteManifestUrl,
 } from "./utils/remote-source-url.js";
 
@@ -194,7 +196,9 @@ async function containsMarkdown(directory: string): Promise<boolean> {
   return false;
 }
 
-async function validateLocalSource(source: string): Promise<void> {
+async function validateLocalSource(
+  source: string,
+): Promise<"local-directory" | "local-v2"> {
   let sourceStats;
   try {
     sourceStats = await stat(source);
@@ -204,8 +208,16 @@ async function validateLocalSource(source: string): Promise<void> {
       { cause: error },
     );
   }
+  if (sourceStats.isFile()) {
+    if (isLocalV2LocatorPath(source)) return "local-v2";
+    throw new Error(
+      "A local documentation file must be the exact _mcp/v2/current.json locator.",
+    );
+  }
   if (!sourceStats.isDirectory()) {
-    throw new Error(`Documentation source is not a directory: ${source}`);
+    throw new Error(
+      `Documentation source is not a directory or v2 locator: ${source}`,
+    );
   }
   try {
     if (!(await containsMarkdown(source))) {
@@ -222,6 +234,7 @@ async function validateLocalSource(source: string): Promise<void> {
       { cause: error },
     );
   }
+  return "local-directory";
 }
 
 /** Resolve CLI, tracked config, and convention defaults into one runnable source. */
@@ -265,7 +278,10 @@ export async function resolveCliOptions(
   } else if (
     config.openapi &&
     context.configPath &&
-    !(sourceOrigin === "cli" && isRemoteDocsSource(docsSource))
+    !(
+      sourceOrigin === "cli" &&
+      (isRemoteDocsSource(docsSource) || isLocalV2LocatorPath(docsSource))
+    )
   ) {
     openApiPath = resolveConfigLocalPath(
       config.openapi,
@@ -275,7 +291,9 @@ export async function resolveCliOptions(
     await assertRealPathContained(openApiPath, context.projectRoot);
   }
 
+  let sourceKind: ResolvedCLIOptions["sourceKind"];
   if (isRemoteDocsSource(docsSource)) {
+    sourceKind = "remote";
     if (openApiPath) {
       throw new Error(
         "Remote documentation must declare OpenAPI in its manifest; --openapi and configured OpenAPI paths are local-only.",
@@ -285,7 +303,12 @@ export async function resolveCliOptions(
     if (sourceOrigin === "config") {
       await assertRealPathContained(docsSource, context.projectRoot);
     }
-    await validateLocalSource(docsSource);
+    sourceKind = await validateLocalSource(docsSource);
+    if (sourceKind === "local-v2" && openApiPath) {
+      throw new Error(
+        "Manifest-backed documentation must declare OpenAPI in its manifest; --openapi and configured OpenAPI paths are directory-only.",
+      );
+    }
   }
 
   const configuredBaseUrl = options.baseUrl ?? config.baseUrl;
@@ -302,6 +325,13 @@ export async function resolveCliOptions(
     verbose: options.verbose,
     projectRoot: context.projectRoot,
     sourceOrigin,
+    sourceKind,
+    sourceFormat:
+      sourceKind === "local-directory"
+        ? "directory"
+        : sourceKind === "local-v2" || isRemoteV2LocatorSource(docsSource)
+          ? "manifest-v2"
+          : "manifest-v1",
     ...(context.configPath && { configPath: context.configPath }),
   };
 }

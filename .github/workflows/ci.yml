@@ -111,13 +111,35 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Install the pinned package manager
+        run: |
+          npm install --global --ignore-scripts --registry https://registry.npmjs.org pnpm@10.26.0
+          pnpm --version
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build the sealed machine projection once
+        run: |
+          node apps/web/scripts/build-machine-projection.mjs \
+            --output artifacts/machine-projection \
+            --repository "https://github.com/$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA"
+
       - name: Build the reviewed image
         shell: bash
         run: |
           set -euo pipefail
           docker build \
             --build-arg "VCS_REF=$GITHUB_SHA" \
+            --build-context corpus=artifacts/machine-projection/_mcp \
             --file Dockerfile.mcp \
+            --target production \
             --tag sumi-docs-mcp:acceptance \
             .
           test "$(docker image inspect sumi-docs-mcp:acceptance --format '{{.Config.User}}')" = 'node'
@@ -153,8 +175,9 @@ jobs:
             fi
             sleep 1
           done
-          jq --arg revision "$GITHUB_SHA" -e \
-            '.status == "ready" and .corpus.documentCount > 0 and .buildRevision == $revision' \
+          corpus_revision="$(jq -r .revision artifacts/machine-projection/_mcp/v2/current.json)"
+          jq --arg revision "$GITHUB_SHA" --arg corpus "$corpus_revision" -e \
+            '.status == "ready" and .corpus.documentCount > 0 and .buildRevision == $revision and .corpus.revision == $corpus' \
             ready.json
 
           curl --fail --silent --show-error \

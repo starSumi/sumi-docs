@@ -20,24 +20,36 @@ test("document URLs preserve the site prefix and encode each path segment", () =
 });
 
 test("explicit manifest routes override path-derived URLs", () => {
-  assert.equal(
-    buildDocumentUrl(
-      "https://docs.example.com/product/",
-      "guides/start.md",
+  const baseUrl = normalizeBaseUrl("https://docs.example.com/product");
+  const cases = [
+    ["/", "https://docs.example.com/product/"],
+    [
       "/manual/getting-started/",
-    ),
-    "https://docs.example.com/product/manual/getting-started/",
-  );
+      "https://docs.example.com/product/manual/getting-started/",
+    ],
+    [
+      "/javascript:alert(1)/",
+      "https://docs.example.com/product/javascript:alert(1)/",
+    ],
+    [
+      "/mailto:user@example.com/",
+      "https://docs.example.com/product/mailto:user@example.com/",
+    ],
+    ["/a:b/", "https://docs.example.com/product/a:b/"],
+  ] as const;
+
+  for (const [route, expected] of cases) {
+    const actual = buildDocumentUrl(baseUrl, "guides/start.md", route);
+    assert.equal(actual, expected);
+    assert.equal(new URL(actual).protocol, new URL(baseUrl).protocol);
+    assert.equal(new URL(actual).origin, new URL(baseUrl).origin);
+  }
 });
 
 test("the logical root route resolves to the configured site prefix", () => {
   assert.equal(
-    buildDocumentUrl(
-      "https://starsumi.github.io/Sumi-Docs-MCP/",
-      "index.mdx",
-      "/",
-    ),
-    "https://starsumi.github.io/Sumi-Docs-MCP/",
+    buildDocumentUrl("https://starsumi.github.io/sumi-docs/", "index.mdx", "/"),
+    "https://starsumi.github.io/sumi-docs/",
   );
 });
 

@@ -40,3 +40,9 @@ export function normalizeRemoteManifestUrl(value: string): URL {
   }
   return url;
 }
+
+export function isRemoteV2LocatorSource(source: string | URL): boolean {
+  const url =
+    source instanceof URL ? source : normalizeRemoteManifestUrl(source);
+  return url.pathname.endsWith("/_mcp/v2/current.json");
+}

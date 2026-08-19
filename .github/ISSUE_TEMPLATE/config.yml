@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability
-    url: https://github.com/starSumi/Sumi-Docs-MCP/security/advisories/new
+    url: https://github.com/starSumi/sumi-docs/security/advisories/new
     about: Report vulnerabilities privately instead of opening a public issue.

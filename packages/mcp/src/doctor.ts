@@ -1,5 +1,4 @@
 import type { ParsedCLIOptions } from "./types/index.js";
-import { isRemoteDocsSource } from "./utils/remote-source-url.js";
 import { DocsVault } from "./vfs/DocsVault.js";
 import { resolveCliOptions } from "./project-config.js";
 import { formatDoctorPath } from "./utils/diagnostics.js";
@@ -21,10 +20,12 @@ export interface DoctorReport {
     value: string;
     origin: "cli" | "config" | "default";
     kind: "local" | "remote";
+    format: "directory" | "manifest-v1" | "manifest-v2";
     loadable: true;
     documentCount: number;
     openApiLoaded: boolean;
     baseUrl?: string;
+    corpusRevision?: string;
   };
 }
 
@@ -53,9 +54,10 @@ export async function createDoctorReport(
 ): Promise<DoctorReport> {
   const options = await resolveCliOptions(parsedOptions, cwd);
   const vault = new DocsVault();
-  const remote = isRemoteDocsSource(options.docsSource);
-  if (remote) {
+  if (options.sourceKind === "remote") {
     await vault.loadFromRemoteManifest(options.docsSource);
+  } else if (options.sourceKind === "local-v2") {
+    await vault.loadFromLocalManifest(options.docsSource);
   } else {
     await vault.loadFromDirectory(options.docsSource);
     if (options.openApiPath) await vault.loadOpenApi(options.openApiPath);
@@ -82,20 +84,25 @@ export async function createDoctorReport(
       }),
     },
     source: {
-      value: remote
-        ? options.docsSource
-        : formatDoctorPath(
-            options.docsSource,
-            options.projectRoot,
-            "source",
-            showPaths,
-          ),
+      value:
+        options.sourceKind === "remote"
+          ? options.docsSource
+          : formatDoctorPath(
+              options.docsSource,
+              options.projectRoot,
+              "source",
+              showPaths,
+            ),
       origin: options.sourceOrigin,
-      kind: remote ? "remote" : "local",
+      kind: options.sourceKind === "remote" ? "remote" : "local",
+      format: options.sourceFormat,
       loadable: true,
       documentCount: stats.documentCount,
       openApiLoaded: stats.hasOpenApiSpec,
       ...(options.baseUrl && { baseUrl: options.baseUrl }),
+      ...(stats.corpusRevision && {
+        corpusRevision: stats.corpusRevision,
+      }),
     },
   };
 }

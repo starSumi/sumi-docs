@@ -32,19 +32,18 @@ RUN pnpm --filter @sumi-os/corpus-contract build \
       --legacy \
       /opt/sumi-docs
 
-FROM node:25.5.0-bookworm-slim AS runtime
+FROM node:25.5.0-bookworm-slim AS runtime-base
 
 ARG VCS_REF=""
 
 LABEL org.opencontainers.image.title="Sumi Docs MCP" \
       org.opencontainers.image.description="Read-only Sumi Docs MCP server" \
-      org.opencontainers.image.source="https://github.com/starSumi/Sumi-Docs-MCP" \
+      org.opencontainers.image.source="https://github.com/starSumi/sumi-docs" \
       org.opencontainers.image.version="0.1.0" \
       org.opencontainers.image.revision=$VCS_REF \
       org.opencontainers.image.licenses="MIT"
 
 ENV NODE_ENV=production \
-    SUMI_DOCS_SOURCE=/data/docs \
     SUMI_DOCS_HTTP_HOST=0.0.0.0 \
     SUMI_DOCS_HTTP_PORT=3000 \
     SUMI_DOCS_HTTP_PATH=/mcp \
@@ -57,8 +56,6 @@ COPY --from=build --chown=node:node /opt/sumi-docs/ ./
 COPY --from=build --chown=node:node \
   /workspace/packages/mcp/scripts/container-entrypoint.mjs \
   ./scripts/container-entrypoint.mjs
-COPY --chown=node:node docs/ /data/docs/
-
 USER node
 
 EXPOSE 3000
@@ -68,3 +65,15 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:3000/readyz').then((response)=>{if(!response.ok)process.exit(1)}).catch(()=>process.exit(1))"]
 
 ENTRYPOINT ["node", "scripts/container-entrypoint.mjs"]
+
+FROM runtime-base AS local
+
+ENV SUMI_DOCS_SOURCE=/data/docs
+
+COPY --chown=node:node docs/ /data/docs/
+
+FROM runtime-base AS production
+
+ENV SUMI_DOCS_SOURCE=/opt/sumi-docs/corpus/v2/current.json
+
+COPY --from=corpus --chown=node:node . /opt/sumi-docs/corpus/

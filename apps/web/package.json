@@ -7,12 +7,12 @@
   "packageManager": "pnpm@10.26.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/starSumi/Sumi-Docs-MCP.git",
+    "url": "git+https://github.com/starSumi/sumi-docs.git",
     "directory": "apps/web"
   },
-  "homepage": "https://github.com/starSumi/Sumi-Docs-MCP/tree/main/apps/web#readme",
+  "homepage": "https://github.com/starSumi/sumi-docs/tree/main/apps/web#readme",
   "bugs": {
-    "url": "https://github.com/starSumi/Sumi-Docs-MCP/issues"
+    "url": "https://github.com/starSumi/sumi-docs/issues"
   },
   "author": "Sumi OS",
   "license": "MIT",
@@ -25,6 +25,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro check && astro build && node --run verify:dist",
+    "build:machine-projection": "node scripts/build-machine-projection.mjs",
     "build:release": "node --run validate:release-env && node --run build",
     "preview": "astro preview",
     "check": "astro check",

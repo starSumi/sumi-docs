@@ -4,6 +4,14 @@
   "private": true,
   "description": "Human and machine-readable Sumi documentation product workspace.",
   "packageManager": "pnpm@10.26.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starSumi/sumi-docs.git"
+  },
+  "homepage": "https://starsumi.github.io/sumi-docs/",
+  "bugs": {
+    "url": "https://github.com/starSumi/sumi-docs/issues"
+  },
   "volta": {
     "node": "25.5.0",
     "pnpm": "10.26.0"

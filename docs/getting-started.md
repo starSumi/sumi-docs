@@ -31,6 +31,16 @@ To serve another local Markdown or MDX corpus, pass its directory explicitly:
 node packages/mcp/dist/index.js serve ./product-docs --openapi ./product-docs/openapi.json
 ```
 
+After building the Web workspace, use its exact local v2 locator to exercise
+the same immutable projection that a production image consumes:
+
+```powershell
+node packages/mcp/dist/index.js serve ./apps/web/dist/_mcp/v2/current.json --base-url http://127.0.0.1:4321/
+```
+
+The v2 manifest declares OpenAPI and integrity metadata, so this form does not
+accept `--openapi`.
+
 Opening the executable directly only prints help and exits; that is expected
 CLI behavior.
 

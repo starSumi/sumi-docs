@@ -1,9 +1,11 @@
 # Release process
 
 Candidate construction, human acceptance, and publication are separate gates.
-The current repository automates candidate construction only. It does not
-publish an npm registry package, deploy the documentation site, create a tag, or create a
-GitHub Release.
+The MCP package and executable lane automates candidate construction only; it
+does not publish an npm registry package, create a tag, or create a GitHub
+Release. The repository's production documentation workflow independently
+deploys the static site and can explicitly deploy the same sealed corpus through
+the Streamable HTTP container. That service deployment is not a package release.
 
 ## Local preflight
 
@@ -93,3 +95,18 @@ the repository remains a pre-release source project.
 Version changes must update package metadata, CLI and MCP server identity, and
 the changelog in the same commit. Do not create a `v1.0.0` tag while the
 application reports another version.
+
+## Documentation service deployment
+
+The `Production documentation release` workflow defaults to Pages-only mode.
+Only `ENABLE_REMOTE_MCP=true` activates the protected remote stage. In that
+stage, the production image consumes the exact v2 projection already built for
+the site; the container does not republish or reinterpret the corpus. The
+workflow verifies the image corpus revision, deploys by registry digest, probes
+the public Streamable HTTP tools, and keeps the previous container until Pages
+and MCP readback both pass. Ordered compensation restores Pages before MCP.
+
+This workflow requires reviewed HTTPS, Host and Origin policy, strict SSH
+known-host verification, and an immutable prior artifact. Missing remote
+configuration fails the remote stage closed and must never be replaced with
+placeholder endpoints or unverified credentials.

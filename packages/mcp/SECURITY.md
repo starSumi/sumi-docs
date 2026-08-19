@@ -7,7 +7,7 @@ line. Security fixes are applied to the current source checkout.
 
 ## Reporting
 
-Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/starSumi/Sumi-Docs-MCP/security/advisories/new).
+Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/starSumi/sumi-docs/security/advisories/new).
 Do not include credentials, private documentation, or exploit data in a public
 issue. The repository owner will acknowledge a report and coordinate a fix
 before disclosure.

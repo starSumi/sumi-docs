@@ -110,4 +110,6 @@ export interface ResolvedCLIOptions extends CLIOptions {
   configPath?: string;
   projectRoot: string;
   sourceOrigin: "cli" | "config" | "default";
+  sourceKind: "local-directory" | "local-v2" | "remote";
+  sourceFormat: "directory" | "manifest-v1" | "manifest-v2";
 }

@@ -7,6 +7,8 @@ This file records user-visible changes. Internal phase notes are retained under
 
 - Added stateless Streamable HTTP to the Node.js distribution while preserving
   stdio as the default and SEA transport.
+- Added strict local v2 locator loading so the Web artifact and MCP container
+  can consume the same sealed corpus bytes and revision without republishing.
 - Required the 2026 protocol version metadata on every Streamable HTTP POST and
   normalized header mismatches and malformed JSON as JSON-RPC errors.
 - Made the repository's reviewed `docs/` corpus the primary self-hosted example

@@ -1,12 +1,12 @@
 # Sumi-Docs-MCP
 
 Sumi-Docs-MCP is a read-only MCP server for Markdown, MDX, and OpenAPI
-documentation stored in a local directory or on a remote HTTPS host. It exposes
-the same four tools over local stdio or stateless Streamable HTTP: list
-documents, search by keyword, fetch one document, and retrieve an OpenAPI
-specification.
+documentation stored in a local directory, a sealed local v2 projection, or a
+remote HTTPS manifest. It exposes the same four tools over local stdio or
+stateless Streamable HTTP: list documents, search by keyword, fetch one
+document, and retrieve an OpenAPI specification.
 
-Source is hosted at [GitHub](https://github.com/starSumi/Sumi-Docs-MCP). No npm
+Source is hosted at [GitHub](https://github.com/starSumi/sumi-docs). No npm
 package or GitHub Release has been published for pre-release `0.1.0`; run the
 checkout locally or build the documented executable artifact.
 
@@ -113,6 +113,17 @@ Relative paths are resolved from the process working directory. Absolute paths
 are accepted when a host cannot set a stable working directory, but they are not
 required and should not be copied into shared diagnostics.
 
+From the monorepo root, a completed Web build can be consumed through its exact
+local v2 locator:
+
+```powershell
+node packages/mcp/dist/index.js serve ./apps/web/dist/_mcp/v2/current.json --base-url http://127.0.0.1:4321/
+```
+
+This verifies the sealed manifest, corpus revision, byte counts, SHA-256
+digests, and local path containment before loading the snapshot. OpenAPI is
+declared by the manifest, so `--openapi` is rejected for this form.
+
 To serve a remote corpus, point the same command at its manifest or containing
 directory:
 
@@ -121,8 +132,8 @@ node dist/index.js serve https://content.example.com/product/
 ```
 
 The remote host must expose `sumi-docs-manifest.json`. The same four MCP tools
-operate on the downloaded read-only snapshot. Remote OpenAPI is declared in the
-manifest, so `--openapi` is local-only. See
+operate on the downloaded read-only snapshot. Manifest-backed OpenAPI is
+declared in the manifest, so `--openapi` is directory-only. See
 [Remote documentation sources](docs/remote-sources.md) for the manifest format
 and network limits.
 
@@ -162,9 +173,9 @@ See [docs/tool-reference.md](docs/tool-reference.md) for exact schemas, result
 fields, error behavior, protocol metadata, and snapshot lifecycle.
 
 The server has no client or session state. Stdio builds one process-local,
-read-only corpus snapshot on the first content tool call. Streamable HTTP loads
-the same snapshot before accepting traffic so `/readyz` can identify it. Source
-changes require a process restart.
+read-only corpus snapshot from the selected directory or manifest on the first
+content tool call. Streamable HTTP loads the same snapshot before accepting
+traffic so `/readyz` can identify it. Source changes require a process restart.
 
 ## Configuration model
 
@@ -175,11 +186,11 @@ sumi-docs-mcp serve [docs-source] [--config <path>] [--openapi <path>] [--base-u
 sumi-docs-mcp doctor [docs-source] [--config <path>] [--json] [--show-paths]
 ```
 
-`[docs-source]` is either a local directory or a remote HTTPS manifest/base URL.
-When omitted, the server uses the nearest config inside the current Git
-worktree, then `<worktree-root>/docs`. Without a Git boundary, it inspects only
-the current directory and defaults to `<cwd>/docs`; it never climbs into a
-parent `.sumi` workspace container.
+`[docs-source]` is a local directory, an exact local `_mcp/v2/current.json`
+locator, or a remote HTTPS manifest/base URL. When omitted, the server uses the
+nearest config inside the current Git worktree, then `<worktree-root>/docs`.
+Without a Git boundary, it inspects only the current directory and defaults to
+`<cwd>/docs`; it never climbs into a parent `.sumi` workspace container.
 `--base-url` controls clickable human-facing page URLs; it is not the remote
 content source.
 
@@ -188,9 +199,10 @@ default. `--show-paths` is an opt-in for local diagnosis and is rejected by
 `serve`; credentials and stack traces stay redacted in both modes.
 
 The benchmark has its own command options; see
-[`docs/development.md`](docs/development.md). No runtime secrets are required.
-The container maps the documented `SUMI_DOCS_*` deployment variables to the same
-validated CLI contract.
+[`docs/development.md`](docs/development.md). Local operation requires no runtime
+secrets. The optional production deployment keeps SSH material in its protected
+environment. The container maps the documented `SUMI_DOCS_*` deployment
+variables to the same validated CLI contract.
 
 ## Documentation
 

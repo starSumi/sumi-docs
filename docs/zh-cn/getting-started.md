@@ -28,6 +28,15 @@ node packages/mcp/dist/index.js serve
 node packages/mcp/dist/index.js serve ./product-docs --openapi ./product-docs/openapi.json
 ```
 
+构建 Web workspace 后，可以使用精确的本地 v2 locator，验证生产镜像所消费的同一份
+不可变投影：
+
+```powershell
+node packages/mcp/dist/index.js serve ./apps/web/dist/_mcp/v2/current.json --base-url http://127.0.0.1:4321/
+```
+
+v2 manifest 已声明 OpenAPI 与完整性元数据，因此这种 source 不接受 `--openapi`。
+
 直接打开可执行文件只会显示帮助并退出，这是 CLI 的正常行为。
 
 ## 已发布语料

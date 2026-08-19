@@ -32,7 +32,7 @@ defaults. `PUBLIC_MCP_URL` and `PUBLIC_MCP_READINESS_URL` are an optional pair.
 When set, they name the deployed HTTPS Streamable HTTP endpoint and its explicit
 readiness endpoint. The build publishes deterministic MCP discovery metadata at
 `<BASE_PATH>_mcp/server.json`; for GitHub Project Pages this is
-`/Sumi-Docs-MCP/_mcp/server.json`. When the pair is absent, that file is absent
+`/sumi-docs/_mcp/server.json`. When the pair is absent, that file is absent
 and the remote probe is skipped. Start from `.env.example`; do not commit
 secrets or machine-specific `.env` files.
 
@@ -106,7 +106,7 @@ GitHub Project Pages uses an origin and subpath instead:
 
 ```powershell
 $env:SITE_URL = "https://starsumi.github.io"
-$env:BASE_PATH = "/Sumi-Docs-MCP/"
+$env:BASE_PATH = "/sumi-docs/"
 pnpm run verify:release
 ```
 
@@ -117,8 +117,12 @@ workflow configuration. It does not deploy the site. See
 [docs/deployment.md](docs/deployment.md) for the human acceptance and rollback
 procedure.
 
-The root `Documentation site` workflow deploys the latest verified `main`
-commit to GitHub Pages. This does not publish the npm package, executable, tag,
+The root `Production documentation release` workflow deploys the latest
+verified `main` commit. It defaults to Pages-only publication with remote MCP
+discovery absent. When the reviewed `ENABLE_REMOTE_MCP` gate is true, the same
+commit-bound machine projection is also embedded in the production MCP image
+and the workflow performs the protected remote switch, public readback, and
+ordered compensation. This does not publish the npm package, executable, tag,
 or GitHub Release.
 
 ## Architecture

@@ -52,6 +52,16 @@ pnpm run build
 node dist/index.js serve ./product-docs --openapi ./product-docs/openapi.json --base-url https://docs.example.com/product/
 ```
 
+After building the Web workspace, consume its exact local v2 locator to
+exercise the immutable projection used by a production image:
+
+```powershell
+node packages/mcp/dist/index.js serve ./apps/web/dist/_mcp/v2/current.json --base-url http://127.0.0.1:4321/
+```
+
+The v2 manifest supplies OpenAPI and integrity metadata, so this source does
+not accept `--openapi`.
+
 From a Git worktree with a `docs/` directory, diagnose and start it without a
 positional path:
 
@@ -123,7 +133,7 @@ stable allowed Host, request-rate controls, and an accepted authorization design
 before serving private content.
 
 For manual HTTP inspection, import the
-[`sumi-docs-mcp.postman_collection.json`](https://github.com/starSumi/Sumi-Docs-MCP/blob/main/packages/mcp/examples/postman/sumi-docs-mcp.postman_collection.json)
+[`sumi-docs-mcp.postman_collection.json`](https://github.com/starSumi/sumi-docs/blob/main/packages/mcp/examples/postman/sumi-docs-mcp.postman_collection.json)
 collection.
 The collection is an operator probe, not an agent-host configuration.
 

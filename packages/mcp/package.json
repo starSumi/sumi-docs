@@ -7,12 +7,12 @@
   "packageManager": "pnpm@10.26.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/starSumi/Sumi-Docs-MCP.git",
+    "url": "git+https://github.com/starSumi/sumi-docs.git",
     "directory": "packages/mcp"
   },
-  "homepage": "https://github.com/starSumi/Sumi-Docs-MCP/tree/main/packages/mcp#readme",
+  "homepage": "https://github.com/starSumi/sumi-docs/tree/main/packages/mcp#readme",
   "bugs": {
-    "url": "https://github.com/starSumi/Sumi-Docs-MCP/issues"
+    "url": "https://github.com/starSumi/sumi-docs/issues"
   },
   "engines": {
     "node": ">=25.5.0"
@@ -118,6 +118,7 @@
     "docs/decisions/0011-calibrated-cold-start-policy.md",
     "docs/decisions/0012-dual-transport-and-address-model.md",
     "docs/decisions/0013-standards-and-schema-authority.md",
+    "docs/decisions/0014-single-build-dual-target-publication.md",
     "docs/configuration.md",
     "docs/contributing.md",
     "docs/development.md",

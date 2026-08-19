@@ -15,6 +15,7 @@
 - [ADR-0011: Calibrate cold-start performance against the supported SDK](decisions/0011-calibrated-cold-start-policy.md)
 - [ADR-0012: Serve one documentation core over stdio and Streamable HTTP](decisions/0012-dual-transport-and-address-model.md)
 - [ADR-0013: Assign one authority to each public contract](decisions/0013-standards-and-schema-authority.md)
+- [ADR-0014: Build one machine projection for Web and MCP deployment](decisions/0014-single-build-dual-target-publication.md)
 
 ## Request path
 

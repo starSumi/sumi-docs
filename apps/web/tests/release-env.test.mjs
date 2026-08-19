@@ -30,12 +30,9 @@ test("accepts a public HTTPS origin", () => {
 });
 
 test("accepts and normalizes a separate deployment base path", () => {
-  const result = validate("https://starsumi.github.io", "/Sumi-Docs-MCP");
+  const result = validate("https://starsumi.github.io", "/sumi-docs");
   assert.equal(result.status, 0, result.stderr);
-  assert.match(
-    result.stdout,
-    /https:\/\/starsumi\.github\.io\/Sumi-Docs-MCP\//,
-  );
+  assert.match(result.stdout, /https:\/\/starsumi\.github\.io\/sumi-docs\//);
 });
 
 test("accepts explicit MCP and readiness endpoints as a pair", () => {
@@ -103,11 +100,11 @@ for (const [name, value] of [
 }
 
 for (const basePath of [
-  "Sumi-Docs-MCP",
-  "//Sumi-Docs-MCP/",
-  "/Sumi-Docs-MCP/../private/",
-  "/Sumi-Docs-MCP?preview=true",
-  "https://example.com/Sumi-Docs-MCP/",
+  "sumi-docs",
+  "//sumi-docs/",
+  "/sumi-docs/../private/",
+  "/sumi-docs?preview=true",
+  "https://example.com/sumi-docs/",
 ]) {
   test(`rejects ambiguous base path '${basePath}'`, () => {
     const result = validate("https://starsumi.github.io", basePath);

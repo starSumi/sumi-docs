@@ -11,8 +11,8 @@ The reviewed root `docs/` tree and content catalog are the semantic source of
 truth. The Web site and MCP server are independently addressable projections;
 an agent host is the MCP client.
 
-The [source repository](https://github.com/starSumi/Sumi-Docs-MCP) and
-[documentation site](https://starsumi.github.io/Sumi-Docs-MCP/) are public and
+The [source repository](https://github.com/starSumi/sumi-docs) and
+[documentation site](https://starsumi.github.io/sumi-docs/) are public and
 under active development. No npm package, tagged GitHub Release, or supported
 binary has been published.
 
@@ -90,10 +90,12 @@ docs/                       product handbook and default corpus
 | Validation               | `pnpm run verify`                                                   | Package quality, tests, and dependency gates   |
 | Cross-product validation | `pnpm run verify:integration`                                       | Exercise the generated Web corpus through MCP  |
 
-There are no required runtime secrets. `SITE_URL` is required only for a
-release-site candidate. The container accepts documented `SUMI_DOCS_*`
-deployment variables; generated output, local state, logs, caches, and `.env`
-files remain ignored.
+Local operation and the default Pages-only publication require no runtime
+secrets. `SITE_URL` is required only for a release-site candidate. Enabling the
+optional production Streamable HTTP service requires reviewed endpoint
+variables and SSH material in the protected `production-mcp` environment. The
+container accepts documented `SUMI_DOCS_*` deployment variables; generated
+output, local state, logs, caches, and `.env` files remain ignored.
 
 Package-specific instructions remain in each workspace. Active architecture
 decisions live in the owning workspace's `docs/decisions/` directory; the root

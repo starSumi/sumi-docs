@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import sumiDocsPublisher, {
   resolveRemoteMcpEnvironment,
+  resolveRequiredProvenanceEnvironment,
 } from "./integrations/sumi-docs-publisher.mjs";
 import { catalogSidebar, contentCatalog } from "./src/content-catalog.ts";
 import { contentRoot } from "./src/content-root.ts";
@@ -29,6 +30,13 @@ const remoteMcp = resolveRemoteMcpEnvironment({
   publicMcpUrl: process.env.PUBLIC_MCP_URL,
   publicMcpReadinessUrl: process.env.PUBLIC_MCP_READINESS_URL,
   version: mcpPackage.version,
+});
+const requiredProvenance = resolveRequiredProvenanceEnvironment({
+  repository:
+    process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY
+      ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}`
+      : undefined,
+  commit: process.env.GITHUB_SHA,
 });
 const portableFilePath = (url) => fileURLToPath(url).replaceAll("\\", "/");
 
@@ -65,7 +73,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/starSumi/Sumi-Docs-MCP",
+          href: "https://github.com/starSumi/sumi-docs",
         },
       ],
       expressiveCode: {
@@ -140,6 +148,7 @@ export default defineConfig({
       catalog: contentCatalog,
       contentRoot,
       openapi: "openapi.json",
+      ...(requiredProvenance && { requiredProvenance }),
       ...(remoteMcp && { remoteMcp }),
     }),
   ],

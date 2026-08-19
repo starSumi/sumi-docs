@@ -1,24 +1,33 @@
-name: Documentation site
+name: Production documentation release
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      bootstrap:
+        description: Confirm the first deployment has no prior remote-discovery tuple
+        required: true
+        type: boolean
+        default: false
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
-  group: documentation-pages-${{ github.workflow }}
-  cancel-in-progress: true
+  group: production-documentation-main
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build verified Pages artifact
-    if: ${{ github.ref == 'refs/heads/main' && !cancelled() }}
+  preflight:
+    name: Select the reviewed production stage
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 10
+    outputs:
+      remote-enabled: ${{ steps.mode.outputs.enabled }}
     steps:
       - name: Require the latest main commit
         env:
@@ -29,7 +38,108 @@ jobs:
           current="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
           test "$current" = "$GITHUB_SHA"
 
-      - name: Check out deployment source
+      - name: Check out deployment policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Select Pages-only or remote MCP mode
+        id: mode
+        env:
+          ENABLE_REMOTE_MCP: ${{ vars.ENABLE_REMOTE_MCP }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${ENABLE_REMOTE_MCP:-}" in
+            '') echo 'enabled=false' >> "$GITHUB_OUTPUT" ;;
+            false) echo 'enabled=false' >> "$GITHUB_OUTPUT" ;;
+            true) echo 'enabled=true' >> "$GITHUB_OUTPUT" ;;
+            *) printf 'ENABLE_REMOTE_MCP must be absent, false, or true.\n' >&2; exit 1 ;;
+          esac
+
+  remote-preflight:
+    name: Require reviewed remote MCP configuration
+    needs: preflight
+    if: ${{ needs.preflight.outputs.remote-enabled == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-mcp
+    outputs:
+      mcp-url: ${{ steps.config.outputs.mcp-url }}
+      readiness-url: ${{ steps.config.outputs.readiness-url }}
+      allowed-hosts: ${{ steps.config.outputs.allowed-hosts }}
+      allowed-origin-hosts: ${{ steps.config.outputs.allowed-origin-hosts }}
+    steps:
+      - name: Check out deployment policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Validate public endpoint configuration
+        id: config
+        env:
+          DEPLOY_PUBLIC_MCP_URL: ${{ vars.DEPLOY_PUBLIC_MCP_URL }}
+          DEPLOY_PUBLIC_MCP_READINESS_URL: ${{ vars.DEPLOY_PUBLIC_MCP_READINESS_URL }}
+          DEPLOY_ALLOWED_HOSTS: ${{ vars.DEPLOY_ALLOWED_HOSTS }}
+          DEPLOY_ALLOWED_ORIGINS: ${{ vars.DEPLOY_ALLOWED_ORIGINS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/verify-production-deployment.mjs config
+          echo "mcp-url=$DEPLOY_PUBLIC_MCP_URL" >> "$GITHUB_OUTPUT"
+          echo "readiness-url=$DEPLOY_PUBLIC_MCP_READINESS_URL" >> "$GITHUB_OUTPUT"
+          echo "allowed-hosts=$DEPLOY_ALLOWED_HOSTS" >> "$GITHUB_OUTPUT"
+          allowed_origin_hosts="$(node scripts/verify-production-deployment.mjs origin-hosts \
+            --origins "$DEPLOY_ALLOWED_ORIGINS")"
+          echo "allowed-origin-hosts=$allowed_origin_hosts" >> "$GITHUB_OUTPUT"
+
+      - name: Require protected SSH material
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in DEPLOY_SSH_HOST DEPLOY_SSH_PORT DEPLOY_SSH_USER DEPLOY_SSH_PRIVATE_KEY DEPLOY_SSH_KNOWN_HOSTS; do
+            test -n "${!name:-}" || {
+              printf 'Missing protected production setting: %s\n' "$name" >&2
+              exit 1
+            }
+          done
+          [[ "$DEPLOY_SSH_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$DEPLOY_SSH_PORT" =~ ^[0-9]{1,5}$ ]]
+          (( DEPLOY_SSH_PORT > 0 && DEPLOY_SSH_PORT < 65536 ))
+          [[ "$DEPLOY_SSH_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]
+
+  build:
+    name: Build one verified release tuple
+    needs: [preflight, remote-preflight]
+    if: ${{ always() && needs.preflight.result == 'success' && (needs.preflight.outputs.remote-enabled == 'false' || needs.remote-preflight.result == 'success') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    outputs:
+      remote-enabled: ${{ needs.preflight.outputs.remote-enabled }}
+      corpus-revision: ${{ steps.corpus.outputs.revision }}
+      image-artifact: mcp-image-${{ github.run_id }}-${{ github.run_attempt }}
+      rollback-artifact: github-pages-rollback-${{ github.run_id }}-${{ github.run_attempt }}
+      pages-artifact: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+      prior-site: ${{ steps.prior.outputs.site }}
+      site-origin: ${{ steps.pages.outputs.origin }}
+      site-base-path: ${{ steps.pages.outputs.base_path }}
+      mcp-url: ${{ needs.remote-preflight.outputs.mcp-url }}
+      readiness-url: ${{ needs.remote-preflight.outputs.readiness-url }}
+      allowed-hosts: ${{ needs.remote-preflight.outputs.allowed-hosts }}
+      allowed-origin-hosts: ${{ needs.remote-preflight.outputs.allowed-origin-hosts }}
+    steps:
+      - name: Check out release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -37,6 +147,116 @@ jobs:
       - name: Configure GitHub Pages
         id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Observe the prior site and preserve its Pages artifact
+        id: prior
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SITE_ORIGIN: ${{ steps.pages.outputs.origin }}
+          SITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          ALLOW_BOOTSTRAP: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap == true }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          mkdir -p artifacts/prior-pages
+          site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"
+          curl_options=(--silent --show-error --retry 2 --retry-all-errors --retry-delay 1 --connect-timeout 5 --max-time 15)
+          locator_status="$(curl "${curl_options[@]}" \
+            --output artifacts/prior-locator.json --write-out '%{http_code}' \
+            "${site_root%/}/_mcp/v2/current.json")"
+          server_status="$(curl "${curl_options[@]}" \
+            --output artifacts/prior-server.json --write-out '%{http_code}' \
+            "${site_root%/}/_mcp/server.json")"
+          [[ "$locator_status" = 200 || "$locator_status" = 404 ]]
+          [[ "$server_status" = 200 || "$server_status" = 404 ]]
+          if [[ "$server_status" = 200 && "$locator_status" != 200 ]]; then
+            printf 'Prior discovery metadata exists without a corpus locator.\n' >&2
+            exit 1
+          fi
+          if [[ "$locator_status" = 200 ]]; then
+            echo 'site=true' >> "$GITHUB_OUTPUT"
+            manifest_path="$(jq -er .manifest artifacts/prior-locator.json)"
+            [[ "$manifest_path" =~ ^snapshots/[0-9a-f]{64}/manifest\.json$ ]]
+            curl "${curl_options[@]}" --fail \
+              "${site_root%/}/_mcp/v2/$manifest_path" > artifacts/prior-manifest.json
+            prior_commit="$(node scripts/verify-production-deployment.mjs prior-manifest \
+              --locator artifacts/prior-locator.json \
+              --manifest artifacts/prior-manifest.json \
+              --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY")"
+            [[ "$prior_commit" =~ ^[0-9a-f]{40}$ ]]
+
+            mapfile -t run_coordinates < <(gh api \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs?branch=main&status=success&per_page=100" \
+              | jq -r --arg commit "$prior_commit" \
+                '[.workflow_runs[] | select(.head_sha == $commit and .conclusion == "success")] | sort_by(.run_attempt, .id) | reverse | .[] | [.id, .run_attempt] | @tsv')
+            ((${#run_coordinates[@]} > 0)) || {
+              printf 'No successful Pages run is bound to live commit %s.\n' "$prior_commit" >&2
+              exit 1
+            }
+
+            rollback_found=false
+            for run_coordinate in "${run_coordinates[@]}"; do
+              IFS=$'\t' read -r run_id run_attempt <<< "$run_coordinate"
+              artifact_name="github-pages-$run_id-$run_attempt"
+              mapfile -t artifact_ids < <(gh api \
+                "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts?name=$artifact_name&per_page=100" \
+                | jq -r --arg name "$artifact_name" '.artifacts[] | select(.name == $name and .expired == false) | .id')
+              for artifact_id in "${artifact_ids[@]}"; do
+                rm -rf artifacts/prior-candidate artifacts/prior-pages.zip
+                mkdir -p artifacts/prior-candidate/archive
+                gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" \
+                  > artifacts/prior-pages.zip || continue
+                [[ "$(unzip -Z1 artifacts/prior-pages.zip)" = 'artifact.tar' ]] || continue
+                unzip -q artifacts/prior-pages.zip -d artifacts/prior-candidate || continue
+                artifact_tar=artifacts/prior-candidate/artifact.tar
+                [[ -f "$artifact_tar" && ! -L "$artifact_tar" ]] || continue
+                [[ "$(stat --format '%s' "$artifact_tar")" -le 10737418240 ]] || continue
+                ! tar -tf "$artifact_tar" | grep -Eq '(^/|(^|/)\.\.(/|$))' || continue
+                ! tar -tvf "$artifact_tar" | grep -Eq '^[lh]' || continue
+                tar -tf "$artifact_tar" | grep -Fxq '_mcp/v2/current.json' || continue
+                tar -tf "$artifact_tar" | grep -Fxq "_mcp/v2/$manifest_path" || continue
+                tar -xf "$artifact_tar" -C artifacts/prior-candidate/archive \
+                  '_mcp/v2/current.json' "_mcp/v2/$manifest_path" || continue
+                cmp -s artifacts/prior-locator.json \
+                  artifacts/prior-candidate/archive/_mcp/v2/current.json || continue
+                cmp -s artifacts/prior-manifest.json \
+                  "artifacts/prior-candidate/archive/_mcp/v2/$manifest_path" || continue
+                artifact_server_status=404
+                artifact_server_path=artifacts/prior-candidate/archive/_mcp/server.json
+                if tar -tf "$artifact_tar" | grep -Fxq '_mcp/server.json'; then
+                  tar -xf "$artifact_tar" -C artifacts/prior-candidate/archive \
+                    '_mcp/server.json' || continue
+                  artifact_server_status=200
+                fi
+                prior_discovery_args=(prior-discovery \
+                  --live-status "$server_status" \
+                  --artifact-status "$artifact_server_status")
+                if [[ "$server_status" = 200 ]]; then
+                  prior_discovery_args+=(--live artifacts/prior-server.json)
+                fi
+                if [[ "$artifact_server_status" = 200 ]]; then
+                  prior_discovery_args+=(--artifact "$artifact_server_path")
+                fi
+                node scripts/verify-production-deployment.mjs \
+                  "${prior_discovery_args[@]}" || continue
+                mv "$artifact_tar" artifacts/prior-pages/artifact.tar
+                rollback_found=true
+                break 2
+              done
+            done
+            [[ "$rollback_found" = true ]] || {
+              printf 'No unexpired artifact for the live Pages provenance passed byte verification.\n' >&2
+              exit 1
+            }
+          else
+            [[ "$server_status" = 404 ]]
+            [[ "$ALLOW_BOOTSTRAP" = true ]] || {
+              printf 'First deployment requires an explicit reviewed bootstrap dispatch.\n' >&2
+              exit 1
+            }
+            echo 'site=false' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -51,50 +271,437 @@ jobs:
       - name: Install exact dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build and verify site
+      - name: Build and verify the release tuple
         env:
           SITE_URL: ${{ steps.pages.outputs.origin }}
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
-          PUBLIC_MCP_URL: ${{ vars.PUBLIC_MCP_URL }}
-          PUBLIC_MCP_READINESS_URL: ${{ vars.PUBLIC_MCP_READINESS_URL }}
-        run: |
-          pnpm run verify:contract
-          pnpm --filter @sumi-os/docs-web verify:release
-          pnpm run verify:integration
-
-      - name: Verify configured remote MCP readiness
-        env:
-          PUBLIC_MCP_URL: ${{ vars.PUBLIC_MCP_URL }}
-          PUBLIC_MCP_READINESS_URL: ${{ vars.PUBLIC_MCP_READINESS_URL }}
+          PUBLIC_MCP_URL: ${{ needs.remote-preflight.outputs.mcp-url }}
+          PUBLIC_MCP_READINESS_URL: ${{ needs.remote-preflight.outputs.readiness-url }}
+          REMOTE_ENABLED: ${{ needs.preflight.outputs.remote-enabled }}
           GITHUB_SHA: ${{ github.sha }}
-        run: node apps/web/scripts/verify-remote-mcp.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm run verify
+          pnpm --filter @sumi-os/docs-web verify:mcp
+          if [[ "$REMOTE_ENABLED" = true ]]; then
+            test -f apps/web/dist/_mcp/server.json
+            jq --arg endpoint "$PUBLIC_MCP_URL" -e \
+              '.remotes == [{"type":"streamable-http","url":$endpoint}]' \
+              apps/web/dist/_mcp/server.json
+          else
+            test ! -e apps/web/dist/_mcp/server.json
+          fi
 
-      - name: Confirm deployment source is still current
-        id: freshness
-        if: ${{ success() && !cancelled() }}
+      - name: Capture the sealed corpus revision
+        id: corpus
+        shell: bash
+        run: |
+          set -euo pipefail
+          revision="$(jq -r .revision apps/web/dist/_mcp/v2/current.json)"
+          [[ "$revision" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+      - name: Build the production image from the sealed projection
+        if: ${{ needs.preflight.outputs.remote-enabled == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_tag="ghcr.io/${GITHUB_REPOSITORY,,}:$GITHUB_SHA"
+          docker build \
+            --build-arg "VCS_REF=$GITHUB_SHA" \
+            --build-context corpus=apps/web/dist/_mcp \
+            --file Dockerfile.mcp \
+            --target production \
+            --tag "$image_tag" \
+            .
+          test "$(docker image inspect "$image_tag" --format '{{.Config.User}}')" = 'node'
+
+      - name: Exercise the embedded production corpus
+        if: ${{ needs.preflight.outputs.remote-enabled == 'true' }}
+        env:
+          CORPUS_REVISION: ${{ steps.corpus.outputs.revision }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_tag="ghcr.io/${GITHUB_REPOSITORY,,}:$GITHUB_SHA"
+          container_id="$(docker run --detach \
+            --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --publish 127.0.0.1:3000:3000 "$image_tag")"
+          cleanup() {
+            docker logs "$container_id" || true
+            docker rm --force "$container_id" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/readyz > ready.json; then
+              break
+            fi
+            [[ "$attempt" != 30 ]]
+            sleep 1
+          done
+          jq --arg build "$GITHUB_SHA" --arg corpus "$CORPUS_REVISION" -e \
+            '.status == "ready" and .buildRevision == $build and .corpus.revision == $corpus and .corpus.documentCount > 0' \
+            ready.json
+          docker stop --time 10 "$container_id" >/dev/null
+          test "$(docker inspect "$container_id" --format '{{.State.ExitCode}}')" = '0'
+
+      - name: Package the exact OCI input
+        if: ${{ needs.preflight.outputs.remote-enabled == 'true' }}
+        env:
+          CORPUS_REVISION: ${{ steps.corpus.outputs.revision }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/deployment
+          image_tag="ghcr.io/${GITHUB_REPOSITORY,,}:$GITHUB_SHA"
+          docker image inspect "$image_tag" --format '{{.Id}}' > artifacts/deployment/image-id.txt
+          printf '%s\n' "$CORPUS_REVISION" > artifacts/deployment/corpus-revision.txt
+          cp apps/web/dist/_mcp/v2/current.json artifacts/deployment/current.json
+          docker save --output artifacts/deployment/image.tar "$image_tag"
+
+      - name: Prepare absent-discovery bootstrap rollback
+        if: ${{ steps.prior.outputs.site == 'false' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a apps/web/dist artifacts/bootstrap-rollback
+          rm -f artifacts/bootstrap-rollback/_mcp/server.json
+
+      - name: Upload preserved Pages rollback artifact
+        if: ${{ steps.prior.outputs.site == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: github-pages-rollback-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/prior-pages/artifact.tar
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload bootstrap Pages rollback artifact
+        if: ${{ steps.prior.outputs.site == 'false' }}
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          name: github-pages-rollback-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/bootstrap-rollback
+          retention-days: 30
+
+      - name: Upload verified Pages artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+          path: apps/web/dist
+          retention-days: 30
+
+      - name: Upload exact OCI input
+        if: ${{ needs.preflight.outputs.remote-enabled == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mcp-image-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/deployment/image.tar
+            artifacts/deployment/image-id.txt
+            artifacts/deployment/corpus-revision.txt
+            artifacts/deployment/current.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-image:
+    name: Publish immutable GHCR image
+    needs: build
+    if: ${{ needs.build.outputs.remote-enabled == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+    outputs:
+      record-artifact: mcp-deployment-${{ github.run_id }}-${{ github.run_attempt }}
+      image: ${{ steps.publish.outputs.image }}
+    steps:
+      - name: Check out deployment verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Download exact OCI input
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.build.outputs.image-artifact }}
+          path: artifacts/deployment
+
+      - name: Publish by immutable commit tag and capture registry digest
+        id: publish
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          current="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
-          if [[ "$current" = "$GITHUB_SHA" ]]; then
-            echo 'current=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'current=false' >> "$GITHUB_OUTPUT"
-          fi
+          image_tag="ghcr.io/${GITHUB_REPOSITORY,,}:$GITHUB_SHA"
+          docker load --input artifacts/deployment/image.tar
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          docker push "$image_tag"
+          image_ref="$(docker image inspect "$image_tag" --format '{{index .RepoDigests 0}}')"
+          [[ "$image_ref" =~ ^ghcr\.io/.+@sha256:[0-9a-f]{64}$ ]]
+          echo "image=$image_ref" >> "$GITHUB_OUTPUT"
+          node scripts/verify-production-deployment.mjs create-record \
+            --repository "$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA" \
+            --locator artifacts/deployment/current.json \
+            --image "$image_ref" \
+            --image-id "$(tr -d '\r\n' < artifacts/deployment/image-id.txt)" \
+            --output artifacts/deployment/deployment.json
 
-      - name: Upload verified Pages artifact
-        if: ${{ success() && !cancelled() && steps.freshness.outputs.current == 'true' }}
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+      - name: Upload digest-bound deployment record
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          path: apps/web/dist
-          retention-days: 1
+          name: mcp-deployment-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/deployment/deployment.json
+          if-no-files-found: error
+          retention-days: 30
 
-  deploy:
-    name: Deploy current main
-    if: ${{ github.ref == 'refs/heads/main' && success() && !cancelled() }}
-    needs: build
+  deploy-mcp:
+    name: Stage the remote MCP switch
+    needs: [build, publish-image]
+    if: ${{ needs.build.outputs.remote-enabled == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production-mcp
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      switched: ${{ steps.switch.outputs.switched }}
+      switch-artifact: mcp-switch-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Check out deployment procedure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Download exact OCI input
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.build.outputs.image-artifact }}
+          path: artifacts/deployment
+
+      - name: Download digest-bound deployment record
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.publish-image.outputs.record-artifact }}
+          path: artifacts/deployment
+
+      - name: Verify deployment record
+        env:
+          CORPUS_REVISION: ${{ needs.build.outputs.corpus-revision }}
+          IMAGE_REF: ${{ needs.publish-image.outputs.image }}
+        shell: bash
+        run: |
+          node scripts/verify-production-deployment.mjs record \
+            --input artifacts/deployment/deployment.json \
+            --repository "$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA" \
+            --corpus-revision "$CORPUS_REVISION" \
+            --image "$IMAGE_REF" \
+            --image-id "$(tr -d '\r\n' < artifacts/deployment/image-id.txt)"
+
+      - name: Switch only after candidate readiness and probe the public MCP
+        id: switch
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          DEPLOY_ALLOWED_HOSTS: ${{ needs.build.outputs.allowed-hosts }}
+          DEPLOY_ALLOWED_ORIGIN_HOSTS: ${{ needs.build.outputs.allowed-origin-hosts }}
+          DEPLOY_PUBLIC_MCP_URL: ${{ vars.DEPLOY_PUBLIC_MCP_URL }}
+          DEPLOY_PUBLIC_MCP_READINESS_URL: ${{ vars.DEPLOY_PUBLIC_MCP_READINESS_URL }}
+          CORPUS_REVISION: ${{ needs.build.outputs.corpus-revision }}
+          IMAGE_REF: ${{ needs.publish-image.outputs.image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'switched=false' >> "$GITHUB_OUTPUT"
+          switched=false
+          prior_state=absent
+          umask 077
+          key="$RUNNER_TEMP/deploy-key"
+          known_hosts="$RUNNER_TEMP/known-hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$known_hosts"
+          lookup="$DEPLOY_SSH_HOST"
+          if [[ "$DEPLOY_SSH_PORT" != 22 ]]; then lookup="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"; fi
+          ssh-keygen -F "$lookup" -f "$known_hosts" >/dev/null
+          ssh_options=(-i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts")
+          remote="$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST"
+          remote_archive="/tmp/sumi-docs-$GITHUB_SHA.tar"
+          scp -i "$key" -P "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            artifacts/deployment/image.tar "$remote:$remote_archive"
+          cleanup_archive() {
+            ssh "${ssh_options[@]}" "$remote" rm -f "$remote_archive" >/dev/null 2>&1 || true
+          }
+          rollback() {
+            local status="${1:-1}"
+            trap - ERR INT TERM HUP
+            if [[ "$switched" = true ]]; then
+              ssh "${ssh_options[@]}" "$remote" bash -s -- rollback "$GITHUB_SHA" "$IMAGE_REF" "$prior_state" \
+                < scripts/deploy-remote-mcp.sh || true
+            fi
+            echo 'switched=false' >> "$GITHUB_OUTPUT"
+            exit "$status"
+          }
+          trap cleanup_archive EXIT
+          trap 'rollback $?' ERR
+          trap 'rollback 130' INT
+          trap 'rollback 143' TERM
+          trap 'rollback 129' HUP
+          switch_record="$(ssh "${ssh_options[@]}" "$remote" bash -s -- stage \
+            "$remote_archive" "$(tr -d '\r\n' < artifacts/deployment/image-id.txt)" "$IMAGE_REF" \
+            "$GITHUB_SHA" "$CORPUS_REVISION" "$DEPLOY_ALLOWED_HOSTS" "$DEPLOY_ALLOWED_ORIGIN_HOSTS" \
+            < scripts/deploy-remote-mcp.sh)"
+          printf '%s\n' "$switch_record" > artifacts/deployment/switch.json
+          node scripts/verify-production-deployment.mjs switch --json \
+            --input artifacts/deployment/switch.json \
+            --commit "$GITHUB_SHA" --image "$IMAGE_REF" \
+            --image-id "$(tr -d '\r\n' < artifacts/deployment/image-id.txt)" \
+            > artifacts/deployment/switch.validated.json
+          case "$(jq -er .value.changed artifacts/deployment/switch.validated.json)" in
+            true) switched=true ;;
+            false) switched=false ;;
+            *) printf 'Switch evidence has no boolean changed state.\n' >&2; exit 1 ;;
+          esac
+          if [[ "$(jq -r .value.oldImage artifacts/deployment/switch.validated.json)" != null ]]; then
+            prior_state=present
+          fi
+          echo "switched=$switched" >> "$GITHUB_OUTPUT"
+          curl --fail --silent --show-error --max-time 10 \
+            "$DEPLOY_PUBLIC_MCP_READINESS_URL" > artifacts/deployment/ready.json
+          node scripts/verify-production-deployment.mjs ready \
+            --input artifacts/deployment/ready.json \
+            --commit "$GITHUB_SHA" --corpus-revision "$CORPUS_REVISION"
+          curl --fail --silent --show-error --max-time 10 \
+            --dump-header artifacts/deployment/mcp-headers.txt \
+            --header 'accept: application/json, text/event-stream' \
+            --header 'content-type: application/json' \
+            --header 'mcp-protocol-version: 2026-07-28' \
+            --header 'mcp-method: tools/list' \
+            --data '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"sumi-docs-release","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}' \
+            "$DEPLOY_PUBLIC_MCP_URL" > artifacts/deployment/tools-list.json
+          jq -e '[.result.tools[].name] | sort == ["fetch_doc","get_openapi_spec","list_docs","search_docs"]' \
+            artifacts/deployment/tools-list.json
+          ! grep -qi '^mcp-session-id:' artifacts/deployment/mcp-headers.txt
+          trap - ERR INT TERM HUP
+
+      - name: Upload validated switch evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mcp-switch-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/deployment/switch.json
+          if-no-files-found: error
+          retention-days: 30
+
+  observe-switch:
+    name: Reconcile the durable remote switch transaction
+    needs: [build, publish-image, deploy-mcp]
+    if: ${{ always() && needs.build.outputs.remote-enabled == 'true' && needs.publish-image.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-mcp
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      state: ${{ steps.observe.outputs.state }}
+      changed: ${{ steps.observe.outputs.changed }}
+      rollback-required: ${{ steps.observe.outputs.rollback-required }}
+      prior-state: ${{ steps.observe.outputs.prior-state }}
+    steps:
+      - name: Check out switch observation procedure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Download exact OCI identity
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.build.outputs.image-artifact }}
+          path: artifacts/deployment
+
+      - name: Observe the durable remote switch transaction
+        id: observe
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          IMAGE_REF: ${{ needs.publish-image.outputs.image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/deploy-key"
+          known_hosts="$RUNNER_TEMP/known-hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$known_hosts"
+          lookup="$DEPLOY_SSH_HOST"
+          if [[ "$DEPLOY_SSH_PORT" != 22 ]]; then lookup="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"; fi
+          ssh-keygen -F "$lookup" -f "$known_hosts" >/dev/null
+          image_id="$(tr -d '\r\n' < artifacts/deployment/image-id.txt)"
+          observation="$(ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- observe "$GITHUB_SHA" "$IMAGE_REF" "$image_id" \
+            < scripts/deploy-remote-mcp.sh)"
+          printf '%s\n' "$observation" > artifacts/deployment/switch-observation.json
+          node scripts/verify-production-deployment.mjs switch-observation --json \
+            --input artifacts/deployment/switch-observation.json \
+            --commit "$GITHUB_SHA" --image "$IMAGE_REF" --image-id "$image_id" \
+            > artifacts/deployment/switch-observation.validated.json
+          state="$(jq -r .value.state artifacts/deployment/switch-observation.validated.json)"
+          changed="$(jq -r '.value.state == "changed"' artifacts/deployment/switch-observation.validated.json)"
+          rollback_required="$(jq -r .value.rollbackRequired artifacts/deployment/switch-observation.validated.json)"
+          prior_state="$(jq -r .value.priorState artifacts/deployment/switch-observation.validated.json)"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "rollback-required=$rollback_required" >> "$GITHUB_OUTPUT"
+          echo "prior-state=$prior_state" >> "$GITHUB_OUTPUT"
+
+      - name: Require a completed or idempotent switch before Pages promotion
+        env:
+          OBSERVED_STATE: ${{ steps.observe.outputs.state }}
+        shell: bash
+        run: test "$OBSERVED_STATE" = changed -o "$OBSERVED_STATE" = idempotent
+
+      - name: Upload reconciled switch observation
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mcp-switch-observation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/deployment/switch-observation.json
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy-pages:
+    name: Promote the prebuilt Pages artifact
+    needs: [build, deploy-mcp, observe-switch]
+    if: ${{ always() && needs.build.result == 'success' && (needs.build.outputs.remote-enabled == 'false' || (needs.deploy-mcp.result == 'success' && needs.observe-switch.result == 'success')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment:
@@ -108,3 +715,373 @@ jobs:
       - name: Deploy verified artifact
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        with:
+          artifact_name: ${{ needs.build.outputs.pages-artifact }}
+
+  final-acceptance:
+    name: Read back the public product tuple
+    needs: [build, publish-image, deploy-mcp, deploy-pages]
+    if: ${{ always() && needs.deploy-pages.result == 'success' && (needs.build.outputs.remote-enabled == 'false' || (needs.publish-image.result == 'success' && needs.deploy-mcp.result == 'success')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out acceptance procedure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Verify the public Pages publication
+        env:
+          REMOTE_ENABLED: ${{ needs.build.outputs.remote-enabled }}
+          DEPLOY_PUBLIC_MCP_URL: ${{ needs.build.outputs.mcp-url }}
+          CORPUS_REVISION: ${{ needs.build.outputs.corpus-revision }}
+          SITE_ORIGIN: ${{ needs.build.outputs.site-origin }}
+          SITE_BASE_PATH: ${{ needs.build.outputs.site-base-path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"
+          for attempt in {1..30}; do
+            locator_ok=false
+            server_ok=false
+            if curl --fail --silent --show-error --max-time 10 \
+              "$site_root/_mcp/v2/current.json" > locator.json; then
+              jq --arg revision "$CORPUS_REVISION" -e '.revision == $revision' locator.json >/dev/null && locator_ok=true
+            fi
+            server_status="$(curl --silent --show-error --max-time 10 \
+              --output server.json --write-out '%{http_code}' \
+              "$site_root/_mcp/server.json")"
+            if [[ "$REMOTE_ENABLED" = true && "$server_status" = 200 ]]; then
+              jq --arg endpoint "$DEPLOY_PUBLIC_MCP_URL" -e \
+                '.remotes == [{"type":"streamable-http","url":$endpoint}]' server.json >/dev/null && server_ok=true
+            elif [[ "$REMOTE_ENABLED" = false && "$server_status" = 404 ]]; then
+              server_ok=true
+            fi
+            if [[ "$locator_ok" = true && "$server_ok" = true ]]; then break; fi
+            [[ "$attempt" != 30 ]]
+            sleep 2
+          done
+
+      - name: Verify readiness and document retrieval from the remote MCP
+        if: ${{ needs.build.outputs.remote-enabled == 'true' }}
+        env:
+          DEPLOY_PUBLIC_MCP_URL: ${{ needs.build.outputs.mcp-url }}
+          DEPLOY_PUBLIC_MCP_READINESS_URL: ${{ needs.build.outputs.readiness-url }}
+          CORPUS_REVISION: ${{ needs.build.outputs.corpus-revision }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 10 \
+            "$DEPLOY_PUBLIC_MCP_READINESS_URL" > ready.json
+          node scripts/verify-production-deployment.mjs ready --input ready.json \
+            --commit "$GITHUB_SHA" --corpus-revision "$CORPUS_REVISION"
+          curl --fail --silent --show-error --max-time 10 \
+            --header 'accept: application/json, text/event-stream' \
+            --header 'content-type: application/json' \
+            --header 'mcp-protocol-version: 2026-07-28' \
+            --header 'mcp-method: tools/call' \
+            --header 'mcp-name: fetch_doc' \
+            --data '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"fetch_doc","arguments":{"path":"getting-started.md"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"sumi-docs-release","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}' \
+            "$DEPLOY_PUBLIC_MCP_URL" > fetched.json
+          jq -e '.result.isError != true and (.result.content | length) > 0' fetched.json
+
+  finalize-mcp:
+    name: Finalize the accepted remote MCP switch
+    needs: [build, publish-image, deploy-mcp, deploy-pages, final-acceptance]
+    if: ${{ needs.build.outputs.remote-enabled == 'true' && needs.final-acceptance.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-mcp
+    permissions:
+      contents: read
+    steps:
+      - name: Check out acceptance procedure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Finalize the remote switch
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          IMAGE_REF: ${{ needs.publish-image.outputs.image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/deploy-key"
+          known_hosts="$RUNNER_TEMP/known-hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$known_hosts"
+          lookup="$DEPLOY_SSH_HOST"
+          if [[ "$DEPLOY_SSH_PORT" != 22 ]]; then lookup="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"; fi
+          ssh-keygen -F "$lookup" -f "$known_hosts" >/dev/null
+          ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- finalize "$GITHUB_SHA" "$IMAGE_REF" \
+            < scripts/deploy-remote-mcp.sh
+
+  compensation-plan:
+    name: Decide compensation from completed job results
+    needs:
+      [
+        build,
+        publish-image,
+        deploy-mcp,
+        observe-switch,
+        deploy-pages,
+        final-acceptance,
+        finalize-mcp,
+      ]
+    if: ${{ always() && needs.build.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      restore-pages: ${{ steps.plan.outputs.restore-pages }}
+      rollback-mcp: ${{ steps.plan.outputs.rollback-mcp }}
+    steps:
+      - name: Check out compensation policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Compute the table-driven compensation plan
+        id: plan
+        env:
+          REMOTE_ENABLED: ${{ needs.build.outputs.remote-enabled }}
+          MCP_ROLLBACK_PENDING: ${{ needs.observe-switch.outputs.rollback-required }}
+          FINAL_ACCEPTANCE_RESULT: ${{ needs.final-acceptance.result }}
+          FINALIZE_MCP_RESULT: ${{ needs.finalize-mcp.result }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+            > artifacts/pages-jobs.json
+          pages_phase="$(node scripts/verify-production-deployment.mjs pages-phase \
+            --input artifacts/pages-jobs.json \
+            --job-name 'Promote the prebuilt Pages artifact' \
+            --step-name 'Deploy verified artifact')"
+          if [[ "$REMOTE_ENABLED" = false ]]; then
+            MCP_ROLLBACK_PENDING=false
+          fi
+          plan="$(node scripts/verify-production-deployment.mjs compensation-plan \
+            --remote-enabled "$REMOTE_ENABLED" \
+            --mcp-rollback-pending "$MCP_ROLLBACK_PENDING" \
+            --pages-phase "$pages_phase" \
+            --final-acceptance "$FINAL_ACCEPTANCE_RESULT" \
+            --finalize-mcp "$FINALIZE_MCP_RESULT")"
+          jq -e 'keys == ["mcpRollbackRequired","restorePages"] and (.restorePages | type == "boolean") and (.mcpRollbackRequired | type == "boolean")' <<< "$plan"
+          echo "restore-pages=$(jq -r .restorePages <<< "$plan")" >> "$GITHUB_OUTPUT"
+          echo "rollback-mcp=$(jq -r .mcpRollbackRequired <<< "$plan")" >> "$GITHUB_OUTPUT"
+
+  rollback-pages:
+    name: Restore the preserved Pages artifact
+    needs: [build, compensation-plan]
+    if: ${{ always() && needs.compensation-plan.outputs.restore-pages == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.rollback.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Redeploy preserved artifact
+        id: rollback
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        with:
+          artifact_name: ${{ needs.build.outputs.rollback-artifact }}
+
+  rollback-mcp:
+    name: Restore the preserved MCP container
+    needs:
+      [build, publish-image, observe-switch, compensation-plan, rollback-pages]
+    if: ${{ always() && needs.compensation-plan.outputs.rollback-mcp == 'true' && needs.observe-switch.outputs.rollback-required == 'true' && ((needs.compensation-plan.outputs.restore-pages == 'true' && needs.rollback-pages.result == 'success') || (needs.compensation-plan.outputs.restore-pages == 'false' && needs.rollback-pages.result == 'skipped')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-mcp
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Require successful Pages compensation
+        env:
+          ROLLBACK_PAGES_RESULT: ${{ needs.rollback-pages.result }}
+          RESTORE_PAGES: ${{ needs.compensation-plan.outputs.restore-pages }}
+        shell: bash
+        run: |
+          if [[ "$RESTORE_PAGES" = true ]]; then
+            test "$ROLLBACK_PAGES_RESULT" = success
+          else
+            test "$ROLLBACK_PAGES_RESULT" = skipped
+          fi
+
+      - name: Check out rollback procedure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Download the exact Pages rollback evidence
+        if: ${{ needs.compensation-plan.outputs.restore-pages == 'true' }}
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.build.outputs.rollback-artifact }}
+          path: artifacts/pages
+
+      - name: Download exact OCI identity
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.build.outputs.image-artifact }}
+          path: artifacts/deployment
+
+      - name: Restore the old container only after Pages rollback
+        id: restore
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          IMAGE_REF: ${{ needs.publish-image.outputs.image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/deploy-key"
+          known_hosts="$RUNNER_TEMP/known-hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$known_hosts"
+          lookup="$DEPLOY_SSH_HOST"
+          if [[ "$DEPLOY_SSH_PORT" != 22 ]]; then lookup="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"; fi
+          ssh-keygen -F "$lookup" -f "$known_hosts" >/dev/null
+          image_id="$(tr -d '\r\n' < artifacts/deployment/image-id.txt)"
+          observation="$(ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- observe "$GITHUB_SHA" "$IMAGE_REF" "$image_id" \
+            < scripts/deploy-remote-mcp.sh)"
+          printf '%s\n' "$observation" > artifacts/deployment/switch-observation.json
+          node scripts/verify-production-deployment.mjs switch-observation --json \
+            --input artifacts/deployment/switch-observation.json \
+            --commit "$GITHUB_SHA" --image "$IMAGE_REF" --image-id "$image_id" \
+            > artifacts/deployment/switch-observation.validated.json
+          state="$(jq -r .value.state artifacts/deployment/switch-observation.validated.json)"
+          test "$(jq -r .value.rollbackRequired artifacts/deployment/switch-observation.validated.json)" = true
+          prior_state="$(jq -r .value.priorState artifacts/deployment/switch-observation.validated.json)"
+          rollback_record="$(ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- rollback "$GITHUB_SHA" "$IMAGE_REF" "$prior_state" \
+            < scripts/deploy-remote-mcp.sh)"
+          printf '%s\n' "$rollback_record" > artifacts/rollback.json
+          node scripts/verify-production-deployment.mjs rollback --json \
+            --input artifacts/rollback.json > artifacts/rollback.validated.json
+          echo "restored=$(jq -r .value.restored artifacts/rollback.validated.json)" >> "$GITHUB_OUTPUT"
+          echo "build-revision=$(jq -r '.value.buildRevision // ""' artifacts/rollback.validated.json)" >> "$GITHUB_OUTPUT"
+          echo "corpus-revision=$(jq -r '.value.corpusRevision // ""' artifacts/rollback.validated.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the compensated public tuple
+        env:
+          RESTORED: ${{ steps.restore.outputs.restored }}
+          RESTORED_BUILD_REVISION: ${{ steps.restore.outputs.build-revision }}
+          RESTORED_CORPUS_REVISION: ${{ steps.restore.outputs.corpus-revision }}
+          DEPLOY_PUBLIC_MCP_READINESS_URL: ${{ needs.build.outputs.readiness-url }}
+          SITE_ORIGIN: ${{ needs.build.outputs.site-origin }}
+          SITE_BASE_PATH: ${{ needs.build.outputs.site-base-path }}
+          RESTORE_PAGES: ${{ needs.compensation-plan.outputs.restore-pages }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"
+          if [[ "$RESTORE_PAGES" = true ]]; then
+            mkdir -p artifacts/pages/extracted
+            test -f artifacts/pages/artifact.tar
+            tar -xf artifacts/pages/artifact.tar -C artifacts/pages/extracted _mcp/v2/current.json
+            for attempt in {1..30}; do
+              if curl --fail --silent --show-error --max-time 10 \
+                "${site_root%/}/_mcp/v2/current.json" > artifacts/public-locator.json && \
+                cmp -s artifacts/pages/extracted/_mcp/v2/current.json artifacts/public-locator.json; then
+                break
+              fi
+              [[ "$attempt" != 30 ]]
+              sleep 2
+            done
+          else
+            locator_status="$(curl --silent --show-error --max-time 10 \
+              --output artifacts/public-locator.json --write-out '%{http_code}' \
+              "${site_root%/}/_mcp/v2/current.json")"
+            if [[ "$RESTORED" = true ]]; then
+              test "$locator_status" = 200
+            else
+              test "$locator_status" = 404
+            fi
+          fi
+          if [[ "$RESTORED" = true ]]; then
+            test "$(jq -r .revision artifacts/public-locator.json)" = "$RESTORED_CORPUS_REVISION"
+            for attempt in {1..30}; do
+              if curl --fail --silent --show-error --max-time 10 \
+                "$DEPLOY_PUBLIC_MCP_READINESS_URL" > artifacts/restored-ready.json && \
+                node scripts/verify-production-deployment.mjs ready \
+                  --input artifacts/restored-ready.json \
+                  --commit "$RESTORED_BUILD_REVISION" \
+                  --corpus-revision "$RESTORED_CORPUS_REVISION"; then
+                break
+              fi
+              [[ "$attempt" != 30 ]]
+              sleep 2
+            done
+          else
+            readiness_status="$(curl --silent --show-error --max-time 10 \
+              --output artifacts/absent-ready.txt --write-out '%{http_code}' \
+              "$DEPLOY_PUBLIC_MCP_READINESS_URL" || true)"
+            [[ ! "$readiness_status" =~ ^2[0-9][0-9]$ ]]
+          fi
+
+      - name: Complete the compensated remote transaction
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          IMAGE_REF: ${{ needs.publish-image.outputs.image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/deploy-key"
+          known_hosts="$RUNNER_TEMP/known-hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$known_hosts"
+          lookup="$DEPLOY_SSH_HOST"
+          if [[ "$DEPLOY_SSH_PORT" != 22 ]]; then lookup="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"; fi
+          ssh-keygen -F "$lookup" -f "$known_hosts" >/dev/null
+          ssh -i "$key" -p "$DEPLOY_SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- complete-rollback "$GITHUB_SHA" "$IMAGE_REF" \
+            < scripts/deploy-remote-mcp.sh

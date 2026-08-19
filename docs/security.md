@@ -6,7 +6,7 @@ description: Report vulnerabilities privately and understand the current trust b
 Sumi Docs publishes source code but does not yet have a supported product
 release. Do not report vulnerabilities in a public issue.
 
-Use [GitHub private vulnerability reporting](https://github.com/starSumi/Sumi-Docs-MCP/security/advisories/new)
+Use [GitHub private vulnerability reporting](https://github.com/starSumi/sumi-docs/security/advisories/new)
 and include the affected commit, reproduction steps, impact, and any known
 mitigation. Do not include secrets or private corpus content in logs or reports.
 

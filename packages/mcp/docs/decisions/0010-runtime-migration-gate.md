@@ -13,8 +13,9 @@ move to Rust. Corpus parsing is delayed until the first content call, so startup
 cost includes process, SDK, module loading, bundling, and measurement overhead.
 ADR-0011 now defines the calibrated release policy.
 
-Rust has an official MCP SDK with stdio support, but changing runtimes risks
-different Markdown, MDX, frontmatter, Unicode, error, and packaging behavior.
+Rust has an official MCP SDK with stdio and Streamable HTTP support, but
+changing runtimes risks different Markdown, MDX, frontmatter, Unicode, error,
+and packaging behavior.
 
 ## Decision
 
@@ -23,10 +24,10 @@ Run at least 30 starts for plain compiled Node, the bundle, and SEA, and record
 runtime, machine, executable hash, min, median, p95, and max. Profile SDK and
 module import cost before changing public behavior.
 
-An isolated Rust spike may implement the same transport and corpus contracts. It
-must use the official Rust MCP SDK and pass the shared golden corpus, manifest
-v1/v2, tool-schema, error-shape, path-security, Unicode, and statelessness
-conformance suites.
+An isolated Rust spike may implement both supported transports and the same
+corpus contracts. It must use the official Rust MCP SDK and pass the shared
+golden corpus, manifest v1/v2, tool-schema, error-shape, path-security, Unicode,
+and statelessness conformance suites.
 
 Promote Rust only when all conditions hold:
 
