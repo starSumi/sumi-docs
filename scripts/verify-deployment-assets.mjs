@@ -137,10 +137,10 @@ function validateDockerAssets(errors) {
     dockerfile.includes("FROM runtime-base AS local") &&
       dockerfile.includes("FROM runtime-base AS production") &&
       dockerfile.includes(
-        "SUMI_DOCS_SOURCE=/opt/sumi-docs/corpus/v2/current.json",
+        "SUMI_DOCS_SOURCE=/opt/sumi-docs/corpus/_mcp/v2/current.json",
       ) &&
       dockerfile.includes(
-        "COPY --from=corpus --chown=node:node . /opt/sumi-docs/corpus/",
+        "COPY --from=corpus --chown=node:node . /opt/sumi-docs/corpus/_mcp/",
       ) &&
       !dockerfile.includes("build-machine-projection.mjs"),
     "The production image must consume one externally sealed corpus context without publishing another projection.",
