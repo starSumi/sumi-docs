@@ -142,6 +142,12 @@ export function validateWorkflowPolicy({
   const container = ci.jobs?.container;
   validatePnpmLifecycle("CI", "container", container, errors);
   const containerSteps = workflowSteps({ jobs: { container } });
+  const contractBuildIndex = containerSteps.findIndex(
+    (step) => step.name === "Build the corpus contract",
+  );
+  const projectionIndex = containerSteps.findIndex(
+    (step) => step.name === "Build the sealed machine projection once",
+  );
   const containerProjection = containerSteps.find(
     (step) => step.name === "Build the sealed machine projection once",
   );
@@ -151,6 +157,16 @@ export function validateWorkflowPolicy({
   const containerExercise = containerSteps.find(
     (step) => step.name === "Exercise the hardened container boundary",
   );
+  if (
+    contractBuildIndex < 0 ||
+    projectionIndex <= contractBuildIndex ||
+    String(containerSteps[contractBuildIndex]?.run ?? "").trim() !==
+      "pnpm --filter @sumi-os/corpus-contract build"
+  ) {
+    errors.push(
+      "CI container must build the corpus contract before machine projection.",
+    );
+  }
   if (
     container?.["runs-on"] !== "ubuntu-24.04" ||
     !String(containerProjection?.run ?? "").includes(

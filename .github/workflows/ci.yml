@@ -124,6 +124,9 @@ jobs:
       - name: Install exact dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Build the corpus contract
+        run: pnpm --filter @sumi-os/corpus-contract build
+
       - name: Build the sealed machine projection once
         run: |
           node apps/web/scripts/build-machine-projection.mjs \

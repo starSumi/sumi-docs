@@ -27,6 +27,7 @@ import {
   contentCatalog,
   defineContentCatalog,
 } from "../src/content-catalog.ts";
+import { resolveGitHubReleaseProvenance } from "../src/site-config.ts";
 
 const provenance = { repository: null, commit: null, dirty: false };
 
@@ -249,6 +250,28 @@ test("release provenance environment is all-or-nothing and canonical", () => {
       /release provenance/i,
     );
   }
+});
+
+test("GitHub release provenance is normalized exactly once by the publisher", () => {
+  const input = resolveGitHubReleaseProvenance({
+    GITHUB_SERVER_URL: "https://github.com",
+    GITHUB_REPOSITORY: "starSumi/sumi-docs",
+    GITHUB_SHA: "0123456789abcdef0123456789abcdef01234567",
+  });
+  assert.deepEqual(input, {
+    repository: "https://github.com/starSumi/sumi-docs",
+    commit: "0123456789abcdef0123456789abcdef01234567",
+  });
+  assert.deepEqual(
+    normalizePublisherOptions({
+      catalog: catalog([document()]),
+      requiredProvenance: input,
+    }).requiredProvenance,
+    {
+      ...input,
+      dirty: false,
+    },
+  );
 });
 
 test("release provenance is bound to the clean Git repository state", async () => {

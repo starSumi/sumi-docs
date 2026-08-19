@@ -4,6 +4,11 @@ export interface SiteDeploymentConfig {
   publicBaseUrl: string;
 }
 
+export interface ReleaseProvenanceInput {
+  repository?: string;
+  commit?: string;
+}
+
 const BASE_SEGMENT = /^[A-Za-z0-9._~-]+$/u;
 
 export function normalizeSiteOrigin(value: string): string {
@@ -66,6 +71,21 @@ export function resolveSiteDeployment(
     siteOrigin,
     basePath: normalizedBasePath,
     publicBaseUrl: new URL(normalizedBasePath, `${siteOrigin}/`).href,
+  };
+}
+
+export function resolveGitHubReleaseProvenance(
+  environment: Readonly<Record<string, string | undefined>>,
+): ReleaseProvenanceInput | undefined {
+  const repository =
+    environment.GITHUB_SERVER_URL && environment.GITHUB_REPOSITORY
+      ? `${environment.GITHUB_SERVER_URL}/${environment.GITHUB_REPOSITORY}`
+      : undefined;
+  if (!repository && !environment.GITHUB_SHA) return undefined;
+
+  return {
+    repository,
+    commit: environment.GITHUB_SHA,
   };
 }
 

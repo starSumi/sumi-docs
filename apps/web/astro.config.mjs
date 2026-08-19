@@ -5,7 +5,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import sumiDocsPublisher, {
   resolveRemoteMcpEnvironment,
-  resolveRequiredProvenanceEnvironment,
 } from "./integrations/sumi-docs-publisher.mjs";
 import { catalogSidebar, contentCatalog } from "./src/content-catalog.ts";
 import { contentRoot } from "./src/content-root.ts";
@@ -14,6 +13,7 @@ import sumiBrowserComponents from "./integrations/sumi-browser-components.mjs";
 import {
   normalizeSiteBasePath,
   normalizeSiteOrigin,
+  resolveGitHubReleaseProvenance,
 } from "./src/site-config.ts";
 
 const site = process.env.SITE_URL
@@ -31,13 +31,7 @@ const remoteMcp = resolveRemoteMcpEnvironment({
   publicMcpReadinessUrl: process.env.PUBLIC_MCP_READINESS_URL,
   version: mcpPackage.version,
 });
-const requiredProvenance = resolveRequiredProvenanceEnvironment({
-  repository:
-    process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY
-      ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}`
-      : undefined,
-  commit: process.env.GITHUB_SHA,
-});
+const requiredProvenance = resolveGitHubReleaseProvenance(process.env);
 const portableFilePath = (url) => fileURLToPath(url).replaceAll("\\", "/");
 
 export default defineConfig({

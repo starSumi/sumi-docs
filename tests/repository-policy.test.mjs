@@ -788,6 +788,19 @@ test("active workflows enforce privilege and supersession boundaries", () => {
   assert.ok(errors.some((error) => error.includes("Pages promotion")));
 });
 
+test("container acceptance builds the corpus contract before projection", () => {
+  const weakened = loadWorkflowPolicyInput();
+  weakened.ci.jobs.container.steps = weakened.ci.jobs.container.steps.filter(
+    (step) => step.name !== "Build the corpus contract",
+  );
+
+  assert.ok(
+    validateWorkflowPolicy(weakened).some((error) =>
+      error.includes("build the corpus contract before machine projection"),
+    ),
+  );
+});
+
 test("production deployment evidence is digest-pinned and corpus-bound", () => {
   const commit = "a".repeat(40);
   const corpusRevision = `sha256:${"b".repeat(64)}`;
