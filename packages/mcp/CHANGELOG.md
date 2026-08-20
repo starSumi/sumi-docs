@@ -33,6 +33,9 @@ This file records user-visible changes. Internal phase notes are retained under
   and CycloneDX materials to acceptance-candidate archives.
 - Preserved deployment subpaths when explicit manifest routes are combined with
   `--base-url`.
+- Added commit-bound npm candidate tarballs for the corpus contract and MCP
+  package, including clean-consumer installation, checksums, and provenance
+  evidence without publishing to the registry.
 
 ## 0.1.0 - 2026-08-12
 

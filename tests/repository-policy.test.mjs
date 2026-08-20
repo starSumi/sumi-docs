@@ -37,6 +37,7 @@ import {
   REQUIRED_PNPM_VERSION,
   validatePackageManager,
 } from "../scripts/enforce-package-manager.mjs";
+import { validatePublishMetadata } from "../scripts/build-npm-candidate.mjs";
 import {
   verifyDependencyGraph,
   verifyNotices,
@@ -103,6 +104,47 @@ test("host adapters reject symlinks and executable file modes", () => {
     validateHostEntries([{ mode: "120000", path: ".mcp.json" }])[0],
     /regular/u,
   );
+});
+
+test("npm publication is limited to the reviewed contract and MCP packages", () => {
+  const root = JSON.parse(readFileSync("package.json", "utf8"));
+  const web = JSON.parse(readFileSync("apps/web/package.json", "utf8"));
+  const contract = JSON.parse(
+    readFileSync("packages/corpus-contract/package.json", "utf8"),
+  );
+  const mcp = JSON.parse(readFileSync("packages/mcp/package.json", "utf8"));
+
+  assert.equal(root.private, true);
+  assert.equal(web.private, true);
+
+  for (const packageJson of [contract, mcp]) {
+    assert.equal(packageJson.private, undefined);
+    assert.deepEqual(packageJson.publishConfig, {
+      access: "public",
+      registry: "https://registry.npmjs.org/",
+    });
+    assert.equal(packageJson.license, "MIT");
+  }
+
+  assert.equal(contract.scripts.prepack, "node --run build");
+  assert.ok(contract.files.includes("LICENSE"));
+  assert.ok(mcp.files.includes("LICENSE"));
+  assert.equal(mcp.dependencies["@sumi-os/corpus-contract"], "workspace:*");
+  assert.equal(
+    root.scripts["pack:npm-candidate"],
+    "node scripts/build-npm-candidate.mjs",
+  );
+
+  const npmrc = readFileSync(".npmrc", "utf8");
+  assert.doesNotMatch(npmrc, /^lockfile=/mu);
+
+  assert.deepEqual(validatePublishMetadata(contract, mcp), []);
+  const weakened = structuredClone(mcp);
+  weakened.private = true;
+  weakened.publishConfig.registry = "https://registry.example.com/";
+  const errors = validatePublishMetadata(contract, weakened);
+  assert.ok(errors.some((error) => error.includes("must not declare private")));
+  assert.ok(errors.some((error) => error.includes("public npm registry")));
 });
 
 test("tracked host adapter validation requires the complete supported set", () => {
@@ -739,6 +781,7 @@ test("active workflows enforce privilege and supersession boundaries", () => {
   weakened.candidate.jobs.build.steps.find(
     (step) => step.name === "Package candidate",
   ).run = [
+    "pnpm run pack:mcp",
     "pnpm run build:compliance",
     "Copy-Item artifacts/compliance/web/NODEJS_LICENSE.txt web",
     "Compress-Archive artifacts/bin/sumi-docs-mcp.exe artifacts/mcp.zip",

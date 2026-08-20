@@ -293,6 +293,9 @@ export function validateWorkflowPolicy({
   }
   const packageRun = String(packageCandidate?.run ?? "");
   if (
+    !packageRun.includes(
+      "pnpm run pack:npm-candidate --output artifacts/npm --commit $env:REQUESTED_COMMIT",
+    ) ||
     !packageRun.includes("pnpm run build:compliance") ||
     !packageRun.includes("artifacts/compliance/mcp/THIRD_PARTY_NOTICES.txt") ||
     !packageRun.includes("artifacts/compliance/mcp/bom.cdx.json") ||
@@ -319,6 +322,9 @@ export function validateWorkflowPolicy({
   }
   const expectedCandidateArtifacts = [
     "artifacts/cold-start.json",
+    "artifacts/npm/npm-candidate.json",
+    "artifacts/npm/*.tgz",
+    "artifacts/npm/*.tgz.sha256",
     "artifacts/sumi-docs-mcp-*.zip",
     "artifacts/sumi-docs-mcp-*.zip.sha256",
     "artifacts/sumi-docs-web-*.zip",
@@ -359,6 +365,12 @@ export function validateWorkflowPolicy({
     errors.push("Attestation job permissions are not least-privilege.");
   }
   const attestSteps = workflowSteps({ jobs: { attest } });
+  const checksumVerification = attestSteps.find(
+    (step) => step.name === "Verify candidate checksums",
+  );
+  const attestation = attestSteps.find((step) =>
+    step.uses?.startsWith("actions/attest@"),
+  );
   if (
     !attestSteps.some((step) =>
       step.uses?.startsWith("actions/download-artifact@"),
@@ -368,6 +380,19 @@ export function validateWorkflowPolicy({
   }
   if (!attestSteps.some((step) => step.uses?.startsWith("actions/attest@"))) {
     errors.push("Attestation job is missing provenance generation.");
+  }
+  if (
+    !String(checksumVerification?.run ?? "").includes("-Recurse") ||
+    String(attestation?.with?.["subject-path"] ?? "").trim() !==
+      [
+        "candidate-artifact/*.zip",
+        "candidate-artifact/npm/npm-candidate.json",
+        "candidate-artifact/npm/*.tgz",
+      ].join("\n")
+  ) {
+    errors.push(
+      "Attestation must verify and bind both binary and npm candidate bytes.",
+    );
   }
 
   const observe = operations.jobs?.observe;

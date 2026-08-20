@@ -2,7 +2,10 @@
   "name": "@sumi-os/corpus-contract",
   "version": "0.1.0",
   "description": "Versioned Sumi documentation corpus schemas and conformance helpers.",
-  "private": true,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/starSumi/sumi-docs.git",
@@ -26,14 +29,16 @@
     "dist",
     "schemas",
     "fixtures",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node --run clean && tsc",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "typecheck": "tsc --noEmit",
     "test": "node --run build && node --test tests/**/*.test.mjs",
-    "verify": "node --run typecheck && node --run test"
+    "verify": "node --run typecheck && node --run test",
+    "prepack": "node --run build"
   },
   "engines": {
     "node": ">=25.5.0"

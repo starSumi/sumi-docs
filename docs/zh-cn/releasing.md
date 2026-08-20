@@ -18,8 +18,9 @@ pnpm run verify:integration
 手动 `Acceptance candidate` 工作流只接受 `main` 最新提交的完整 40 位 SHA、公开源地址和
 部署基础路径。
 它在没有 OIDC 或 attestation 权限的 job 中运行发布套件，并上传静态归档、SHA-256
-校验和、原始性能证据、项目与运行时许可证、第三方声明和 CycloneDX 组件清单；它不会
-部署站点。
+校验和、原始性能证据、项目与运行时许可证、第三方声明和 CycloneDX 组件清单。它还会
+一起打包 corpus contract 和 MCP package，把精确 tarball 安装到干净的临时 consumer，
+并将摘要记录在 npm candidate manifest 中；它不会部署站点或发布到 npm。
 
 来源证明由独立的受保护 job 生成。只有仓库变量 `ENABLE_ATTESTATION` 为 `true`，且
 `candidate-attestation` environment 已存在并受到保护时才会运行。若仓库无法落实该
@@ -50,3 +51,8 @@ image digest 和 image ID。
 发布站点因没有旧产物，必须手动 dispatch 并明确确认 `bootstrap`。
 
 该生产工作流不会发布 npm package、Windows 可执行文件、Git tag 或 GitHub Release。
+
+首次 npm 发布是独立的 bootstrap 操作。它要求已经证明对 `@sumi-os` scope 的控制权并
+启用双因素认证，先发布已验收的精确 corpus-contract tarball，再发布已验收的精确 MCP
+tarball。后续版本使用受保护的 npm trusted publisher、staged publishing 和人工批准。
+两条路径都不得重新构建已验收的 tarball，也不得使用未经评审的长期 registry 写入 token。

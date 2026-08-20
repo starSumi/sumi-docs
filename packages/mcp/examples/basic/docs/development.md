@@ -90,7 +90,8 @@ installation as supported until registry publication is verified.
 
 The repository candidate and human-acceptance workflow is documented in
 [releasing.md](releasing.md). It validates the package boundary, builds and
-smoke-tests the Windows executable, records raw cold-start evidence, and
-packages commit-bound Web and MCP archives with SHA-256 sidecars. Registry
-publication, code signing, SBOM production, tags, and GitHub Releases are not
-implemented by the current workflow.
+smoke-tests the Windows executable, records raw cold-start evidence, packages
+commit-bound Web and MCP archives, and installs the exact npm candidate
+tarballs in a clean temporary consumer. Registry publication, code signing,
+tags, and GitHub Releases are not implemented by the current workflow. SBOMs
+are generated for the candidate archives but do not publish a registry package.

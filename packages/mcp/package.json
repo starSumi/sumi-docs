@@ -2,7 +2,10 @@
   "name": "@sumi-os/docs-mcp",
   "version": "0.1.0",
   "description": "Read-only MCP server for Markdown, MDX, and OpenAPI documentation.",
-  "private": true,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "type": "module",
   "packageManager": "pnpm@10.26.0",
   "repository": {
@@ -25,8 +28,8 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "scripts": {

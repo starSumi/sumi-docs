@@ -20,7 +20,10 @@ SHA, public origin, and deployment base path from the latest `main`, runs the
 release suite without OIDC or
 attestation authority, and uploads static archives, SHA-256 checksums, raw
 performance evidence, project and runtime licenses, third-party notices, and a
-CycloneDX component inventory. It does not deploy the site.
+CycloneDX component inventory. It also packs the corpus contract and MCP package,
+installs the exact tarballs into a clean temporary consumer, and records their
+digests in an npm candidate manifest. It does not deploy the site or publish to
+npm.
 
 Provenance attestation is a separate protected job. It runs only when the
 repository variable `ENABLE_ATTESTATION` is `true` and the
@@ -62,3 +65,10 @@ exists.
 
 This production workflow does not publish the npm package, Windows executable,
 Git tag, or GitHub Release.
+
+The first npm publication is a separate bootstrap operation. It requires proven
+control of the `@sumi-os` scope and two-factor authentication, and publishes the
+exact accepted corpus-contract tarball before the exact accepted MCP tarball.
+Subsequent releases use a protected npm trusted publisher with staged publishing
+and human approval. Neither path may rebuild the accepted tarballs or use an
+unreviewed long-lived registry write token.

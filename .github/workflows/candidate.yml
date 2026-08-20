@@ -98,6 +98,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
+          pnpm run pack:npm-candidate --output artifacts/npm --commit $env:REQUESTED_COMMIT
           pnpm run build:compliance
           $stagingRoot = 'artifacts/candidate-staging'
           $mcpRoot = Join-Path $stagingRoot 'mcp'
@@ -138,6 +139,9 @@ jobs:
           name: acceptance-candidate-${{ inputs.commit }}
           path: |
             artifacts/cold-start.json
+            artifacts/npm/npm-candidate.json
+            artifacts/npm/*.tgz
+            artifacts/npm/*.tgz.sha256
             artifacts/sumi-docs-mcp-*.zip
             artifacts/sumi-docs-mcp-*.zip.sha256
             artifacts/sumi-docs-web-*.zip
@@ -190,7 +194,7 @@ jobs:
       - name: Verify candidate checksums
         shell: pwsh
         run: |
-          Get-ChildItem candidate-artifact/*.sha256 | ForEach-Object {
+          Get-ChildItem candidate-artifact -Filter *.sha256 -Recurse | ForEach-Object {
             $fields = (Get-Content -Raw $_.FullName).Trim() -split '\s+', 2
             if ($fields.Count -ne 2) { throw "Invalid checksum file: $($_.Name)" }
             $subject = Join-Path $_.DirectoryName $fields[1]
@@ -203,4 +207,7 @@ jobs:
       - name: Attest candidate provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: candidate-artifact/*.zip
+          subject-path: |
+            candidate-artifact/*.zip
+            candidate-artifact/npm/npm-candidate.json
+            candidate-artifact/npm/*.tgz

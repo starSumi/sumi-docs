@@ -1,6 +1,6 @@
 # Corpus contract
 
-This internal package owns the Sumi Docs manifest schemas, canonical JSON,
+This package owns the Sumi Docs manifest schemas, canonical JSON,
 revision calculation, strict validation, and conformance fixtures. It contains
 no filesystem acquisition, Markdown parser, MCP transport, or Astro behavior.
 

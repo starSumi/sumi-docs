@@ -23,10 +23,13 @@ pnpm run benchmark:cold-start --iterations 100 --executable artifacts/bin/sumi-d
 ```
 
 `pnpm run pack:mcp` is a dry run. It validates the package boundary but does not
-produce a release tarball. The calibrated ADR-0011 policy compares the product
-with a same-host empty official-SDK baseline. A failed performance command
-blocks release; p99 and maximum remain diagnostic rather than single-sample
-release thresholds.
+produce a release tarball. The acceptance workflow instead packs the corpus
+contract and MCP package together, verifies their packed metadata and digests,
+installs both tarballs into a clean temporary consumer, and exercises the
+installed CLI and package exports. The calibrated ADR-0011 policy compares the
+product with a same-host empty official-SDK baseline. A failed performance
+command blocks release; p99 and maximum remain diagnostic rather than
+single-sample release thresholds.
 
 ## Build an acceptance candidate
 
@@ -46,9 +49,12 @@ commit-bound artifact retained for 14 days:
 - `sumi-docs-mcp-<commit>.zip.sha256`;
 - `sumi-docs-web-<commit>.zip`;
 - `sumi-docs-web-<commit>.zip.sha256`;
+- `npm/npm-candidate.json`;
+- `npm/sumi-os-corpus-contract-<version>.tgz` and its SHA-256 sidecar;
+- `npm/sumi-os-docs-mcp-<version>.tgz` and its SHA-256 sidecar;
 - `cold-start.json`.
 
-Both archives contain the project license, deterministic third-party notices,
+Both ZIP archives contain the project license, deterministic third-party notices,
 and a CycloneDX component inventory. The MCP archive also contains the Node.js
 runtime license. The SEA bundle preserves legal comments and its esbuild
 metafile is checked against the production dependency inventory.
@@ -56,16 +62,18 @@ metafile is checked against the production dependency inventory.
 The workflow uploads the raw evidence before enforcing the performance gate, so
 a failed run can be diagnosed without treating its artifact as accepted.
 
-An optional, separate job attests the two ZIP files only when the repository
-variable `ENABLE_ATTESTATION` is `true` and the protected
-`candidate-attestation` environment is available. A skipped attestation is an
-open release gate. It is not equivalent to a successful attestation.
+An optional, separate job attests the ZIP files, npm tarballs, and npm candidate
+manifest only when the repository variable `ENABLE_ATTESTATION` is `true` and
+the protected `candidate-attestation` environment is available. A skipped
+attestation is an open release gate. It is not equivalent to a successful
+attestation.
 
 ## Human acceptance
 
-Download the artifact from the selected workflow run and verify each SHA-256
-sidecar against its sibling ZIP. Test the archived executable rather than a
-local rebuild:
+Download the artifact from the selected workflow run. Verify every ZIP and npm
+tarball against its sibling SHA-256 sidecar, and compare the npm tarballs with
+`npm/npm-candidate.json`. Test the archived executable rather than a local
+rebuild:
 
 ```powershell
 Get-FileHash .\sumi-docs-mcp-<commit>.zip -Algorithm SHA256
@@ -86,11 +94,17 @@ artifact; they do not replace operating-system code signing.
 
 ## Promotion boundary
 
-Do not create or push a release tag from this procedure. A later promotion
-workflow must consume the exact accepted artifact without rebuilding it, verify
-its checksums and accepted commit, enforce signing and provenance policy, and
-provide a rollback target. Until that workflow exists and passes human review,
-the repository remains a pre-release source project.
+Do not create or push a release tag from this procedure. The first npm release
+is a separate bootstrap operation: prove control of the `@sumi-os` scope and
+two-factor authentication, publish the exact accepted corpus-contract tarball
+before the exact accepted MCP tarball, and read back registry integrity and
+metadata. Do not rebuild either package during promotion.
+
+After both packages exist on npm, use a protected trusted-publisher workflow
+with npm staged publishing and human two-factor approval. It must consume the
+exact accepted tarballs, verify their checksums and accepted commit, and avoid a
+long-lived registry write token. Binary, tag, and GitHub Release promotion
+remain separate gates with their own signing, provenance, and rollback policy.
 
 Version changes must update package metadata, CLI and MCP server identity, and
 the changelog in the same commit. Do not create a `v1.0.0` tag while the

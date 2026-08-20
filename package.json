@@ -41,6 +41,7 @@
     "verify:compliance": "node scripts/run-workspace-script.mjs packages/mcp build:sea-bundle && node --run build:compliance",
     "benchmark:cold-start": "node scripts/run-workspace-script.mjs packages/mcp benchmark:cold-start",
     "pack:mcp": "node scripts/run-pnpm-command.mjs --dir packages/mcp pack --dry-run",
+    "pack:npm-candidate": "node scripts/build-npm-candidate.mjs",
     "clean": "node scripts/run-workspace-script.mjs packages/corpus-contract clean && node scripts/run-workspace-script.mjs packages/mcp clean",
     "commitlint": "commitlint",
     "lint:staged": "lint-staged --fail-on-changes",
