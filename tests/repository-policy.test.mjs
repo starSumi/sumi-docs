@@ -202,6 +202,24 @@ test("the native development checkpoint is pinned and required by CI", () => {
   );
 });
 
+test("CI rejects non-public identities across reachable history", () => {
+  const root = JSON.parse(readFileSync("package.json", "utf8"));
+  const ci = parse(readFileSync(".github/workflows/ci.yml", "utf8"));
+  const commitPolicySteps = ci.jobs["commit-policy"].steps;
+
+  assert.equal(
+    root.scripts["verify:public-history"],
+    "node scripts/verify-public-history.mjs --ref HEAD",
+  );
+  assert.equal(
+    commitPolicySteps.find(
+      (step) =>
+        step.name === "Reject non-public identities in reachable history",
+    )?.run,
+    "pnpm run verify:public-history",
+  );
+});
+
 test("tracked host adapter validation requires the complete supported set", () => {
   const complete = [...ALLOWED_HOST_FILES].map((path) => ({
     mode: "100644",

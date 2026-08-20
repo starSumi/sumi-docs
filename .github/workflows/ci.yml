@@ -62,6 +62,9 @@ jobs:
             node packages/mcp/scripts/git-hooks/reject-agent-identity.mjs --commit "$commit"
           done
 
+      - name: Reject non-public identities in reachable history
+        run: pnpm run verify:public-history
+
   verify:
     name: Verify (${{ matrix.os }})
     strategy:
