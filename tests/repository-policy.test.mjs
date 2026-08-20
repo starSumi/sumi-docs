@@ -37,7 +37,10 @@ import {
   REQUIRED_PNPM_VERSION,
   validatePackageManager,
 } from "../scripts/enforce-package-manager.mjs";
-import { validatePublishMetadata } from "../scripts/build-npm-candidate.mjs";
+import {
+  createNpmEnvironment,
+  validatePublishMetadata,
+} from "../scripts/build-npm-candidate.mjs";
 import {
   verifyDependencyGraph,
   verifyNotices,
@@ -145,6 +148,17 @@ test("npm publication is limited to the reviewed contract and MCP packages", () 
   const errors = validatePublishMetadata(contract, weakened);
   assert.ok(errors.some((error) => error.includes("must not declare private")));
   assert.ok(errors.some((error) => error.includes("public npm registry")));
+
+  assert.deepEqual(
+    createNpmEnvironment({
+      PATH: "kept",
+      npm_config_store_dir: "removed",
+      NPM_PACKAGE_NAME: "removed",
+      npm_lifecycle_event: "removed",
+      npm_execpath: "removed",
+    }),
+    { PATH: "kept" },
+  );
 });
 
 test("tracked host adapter validation requires the complete supported set", () => {

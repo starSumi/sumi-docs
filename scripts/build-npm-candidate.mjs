@@ -30,6 +30,7 @@ function run(command, args, options = {}) {
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
     stdio: options.capture ? "pipe" : "inherit",
+    env: options.env ?? process.env,
   });
   if (result.error) throw result.error;
   if (result.status !== 0) {
@@ -146,6 +147,19 @@ function pnpm(args) {
 
 let windowsNpmCli;
 
+export function createNpmEnvironment(source = process.env) {
+  const environment = { ...source };
+  for (const key of Object.keys(environment)) {
+    if (
+      /^npm_(?:config|package|lifecycle)_/iu.test(key) ||
+      /^(?:npm_command|npm_execpath|npm_node_execpath)$/iu.test(key)
+    ) {
+      delete environment[key];
+    }
+  }
+  return environment;
+}
+
 function resolveWindowsNpmCli() {
   if (windowsNpmCli) return windowsNpmCli;
   const shims = run("where.exe", ["npm.cmd"], { capture: true })
@@ -167,9 +181,14 @@ function npm(args, cwd, capture = false) {
     return run(process.execPath, [resolveWindowsNpmCli(), ...args], {
       cwd,
       capture,
+      env: createNpmEnvironment(),
     });
   }
-  return run("npm", args, { cwd, capture });
+  return run("npm", args, {
+    cwd,
+    capture,
+    env: createNpmEnvironment(),
+  });
 }
 
 function packageManagerVersion() {
