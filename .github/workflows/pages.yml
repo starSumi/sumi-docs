@@ -454,7 +454,7 @@ jobs:
           node-version-file: .node-version
 
       - name: Download exact OCI input
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.image-artifact }}
           path: artifacts/deployment
@@ -515,13 +515,13 @@ jobs:
           node-version-file: .node-version
 
       - name: Download exact OCI input
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.image-artifact }}
           path: artifacts/deployment
 
       - name: Download digest-bound deployment record
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.publish-image.outputs.record-artifact }}
           path: artifacts/deployment
@@ -663,7 +663,7 @@ jobs:
           node-version-file: .node-version
 
       - name: Download exact OCI identity
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.image-artifact }}
           path: artifacts/deployment
@@ -1036,13 +1036,13 @@ jobs:
 
       - name: Download the exact Pages rollback evidence
         if: ${{ needs.compensation-plan.outputs.restore-pages == 'true' }}
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.rollback-artifact }}
           path: artifacts/pages
 
       - name: Download exact OCI identity
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.image-artifact }}
           path: artifacts/deployment
