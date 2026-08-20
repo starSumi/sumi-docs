@@ -212,25 +212,44 @@ jobs:
                 artifact_tar=artifacts/prior-candidate/artifact.tar
                 [[ -f "$artifact_tar" && ! -L "$artifact_tar" ]] || continue
                 [[ "$(stat --format '%s' "$artifact_tar")" -le 10737418240 ]] || continue
+                archive_members_raw=artifacts/prior-candidate/archive-members-raw.txt
                 archive_members=artifacts/prior-candidate/archive-members.txt
+                archive_members_sorted=artifacts/prior-candidate/archive-members-sorted.txt
+                archive_duplicates=artifacts/prior-candidate/archive-duplicates.txt
                 archive_details=artifacts/prior-candidate/archive-details.txt
-                tar -tf "$artifact_tar" > "$archive_members" || continue
+                tar -tf "$artifact_tar" > "$archive_members_raw" || continue
                 tar -tvf "$artifact_tar" > "$archive_details" || continue
+                sed 's#^\./##' "$archive_members_raw" > "$archive_members" || continue
+                sort "$archive_members" -o "$archive_members_sorted" || continue
+                uniq -d "$archive_members_sorted" "$archive_duplicates" || continue
+                [[ ! -s "$archive_duplicates" ]] || continue
                 ! grep -Eq '(^/|(^|/)\.\.(/|$))' "$archive_members" || continue
                 ! grep -Eq '^[lh]' "$archive_details" || continue
-                grep -Fxq '_mcp/v2/current.json' "$archive_members" || continue
-                grep -Fxq "_mcp/v2/$manifest_path" "$archive_members" || continue
+                locator_member='_mcp/v2/current.json'
+                manifest_member="_mcp/v2/$manifest_path"
+                if grep -Fxq "./$locator_member" "$archive_members_raw"; then
+                  locator_member="./$locator_member"
+                fi
+                if grep -Fxq "./$manifest_member" "$archive_members_raw"; then
+                  manifest_member="./$manifest_member"
+                fi
+                grep -Fxq "$locator_member" "$archive_members_raw" || continue
+                grep -Fxq "$manifest_member" "$archive_members_raw" || continue
                 tar -xf "$artifact_tar" -C artifacts/prior-candidate/archive \
-                  '_mcp/v2/current.json' "_mcp/v2/$manifest_path" || continue
+                  "$locator_member" "$manifest_member" || continue
                 cmp -s artifacts/prior-locator.json \
                   artifacts/prior-candidate/archive/_mcp/v2/current.json || continue
                 cmp -s artifacts/prior-manifest.json \
                   "artifacts/prior-candidate/archive/_mcp/v2/$manifest_path" || continue
                 artifact_server_status=404
                 artifact_server_path=artifacts/prior-candidate/archive/_mcp/server.json
-                if grep -Fxq '_mcp/server.json' "$archive_members"; then
+                server_member='_mcp/server.json'
+                if grep -Fxq "./$server_member" "$archive_members_raw"; then
+                  server_member="./$server_member"
+                fi
+                if grep -Fxq "$server_member" "$archive_members_raw"; then
                   tar -xf "$artifact_tar" -C artifacts/prior-candidate/archive \
-                    '_mcp/server.json' || continue
+                    "$server_member" || continue
                   artifact_server_status=200
                 fi
                 prior_discovery_args=(prior-discovery \
@@ -1088,7 +1107,13 @@ jobs:
           if [[ "$RESTORE_PAGES" = true ]]; then
             mkdir -p artifacts/pages/extracted
             test -f artifacts/pages/artifact.tar
-            tar -xf artifacts/pages/artifact.tar -C artifacts/pages/extracted _mcp/v2/current.json
+            tar -tf artifacts/pages/artifact.tar > artifacts/pages/archive-members-raw.txt
+            locator_member='_mcp/v2/current.json'
+            if grep -Fxq "./$locator_member" artifacts/pages/archive-members-raw.txt; then
+              locator_member="./$locator_member"
+            fi
+            grep -Fxq "$locator_member" artifacts/pages/archive-members-raw.txt
+            tar -xf artifacts/pages/artifact.tar -C artifacts/pages/extracted "$locator_member"
             for attempt in {1..30}; do
               if curl --fail --silent --show-error --max-time 10 \
                 "${site_root%/}/_mcp/v2/current.json" > artifacts/public-locator.json && \

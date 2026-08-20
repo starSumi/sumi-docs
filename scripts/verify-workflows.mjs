@@ -546,8 +546,13 @@ export function validateWorkflowPolicy({
     !priorRun.includes("ALLOW_BOOTSTRAP") ||
     !priorRun.includes("artifact.tar") ||
     !priorRun.includes(".expired == false") ||
-    !priorRun.includes('tar -tf "$artifact_tar" > "$archive_members"') ||
+    !priorRun.includes('tar -tf "$artifact_tar" > "$archive_members_raw"') ||
     !priorRun.includes('tar -tvf "$artifact_tar" > "$archive_details"') ||
+    !priorRun.includes("sed 's#^\\./##' \"$archive_members_raw\"") ||
+    !priorRun.includes(
+      'uniq -d "$archive_members_sorted" "$archive_duplicates"',
+    ) ||
+    !priorRun.includes('locator_member="./$locator_member"') ||
     /tar\s+-t[v]?f[^\n|]*\|\s*grep\s+[^\n]*-q/u.test(priorRun) ||
     pagesBuild?.outputs?.["pages-artifact"] !==
       "github-pages-${{ github.run_id }}-${{ github.run_attempt }}" ||
@@ -883,6 +888,8 @@ export function validateWorkflowPolicy({
     !rollbackMcpRun.includes('"$prior_state"') ||
     !rollbackMcpRun.includes("verify-production-deployment.mjs rollback") ||
     !rollbackReadbackRun.includes("_mcp/v2/current.json") ||
+    !rollbackReadbackRun.includes("archive-members-raw.txt") ||
+    !rollbackReadbackRun.includes('locator_member="./$locator_member"') ||
     !rollbackReadbackRun.includes("cmp -s") ||
     !rollbackReadbackRun.includes("verify-production-deployment.mjs ready") ||
     !rollbackCleanupRun.includes("StrictHostKeyChecking=yes") ||
@@ -928,6 +935,17 @@ export function validateWorkflowPolicy({
   );
   const recoveryPages = recoveryJobs["restore-pages"];
   const recoveryVerifyPages = recoveryJobs["verify-pages"];
+  const recoveryArchiveRun = String(
+    recoveryObserve?.steps?.find(
+      (step) => step.name === "Verify the preserved Pages archive",
+    )?.run ?? "",
+  );
+  const recoveryPagesReadbackRun = String(
+    recoveryVerifyPages?.steps?.find(
+      (step) =>
+        step.name === "Match the public locator to the preserved artifact",
+    )?.run ?? "",
+  );
   const recoveryMcp = recoveryJobs["restore-mcp"];
   const recoveryMcpRestoreRun = String(
     recoveryMcp?.steps?.find((step) => step.id === "restore")?.run ?? "",
@@ -995,6 +1013,12 @@ export function validateWorkflowPolicy({
       "_mcp/v2/current.json",
     ) ||
     !String(recoveryVerifyPages?.steps?.at(-1)?.run ?? "").includes("cmp -s") ||
+    !recoveryArchiveRun.includes("archive-members-raw.txt") ||
+    !recoveryArchiveRun.includes("archive-members-sorted.txt") ||
+    !recoveryArchiveRun.includes("archive-duplicates.txt") ||
+    /tar\s+-t[v]?f[^\n|]*\|\s*grep\s+[^\n]*-q/u.test(recoveryArchiveRun) ||
+    !recoveryPagesReadbackRun.includes("archive-members-raw.txt") ||
+    !recoveryPagesReadbackRun.includes('locator_member="./$locator_member"') ||
     !needsExactly(recoveryMcp, ["observe", "observe-switch", "verify-pages"]) ||
     !String(recoveryMcp?.if ?? "").includes(
       "needs.observe-switch.outputs.rollback-required == 'true'",

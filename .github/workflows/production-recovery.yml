@@ -101,8 +101,15 @@ jobs:
           set -euo pipefail
           test -f artifacts/pages/artifact.tar
           test "$(stat --format '%s' artifacts/pages/artifact.tar)" -le 10737418240
-          ! tar -tf artifacts/pages/artifact.tar | grep -Eq '(^/|(^|/)\.\.(/|$))'
-          ! tar -tvf artifacts/pages/artifact.tar | grep -Eq '^[lh]'
+          tar -tf artifacts/pages/artifact.tar > artifacts/pages/archive-members-raw.txt
+          tar -tvf artifacts/pages/artifact.tar > artifacts/pages/archive-details.txt
+          sed 's#^\./##' artifacts/pages/archive-members-raw.txt > artifacts/pages/archive-members.txt
+          sort artifacts/pages/archive-members.txt -o artifacts/pages/archive-members-sorted.txt
+          uniq -d artifacts/pages/archive-members-sorted.txt artifacts/pages/archive-duplicates.txt
+          test ! -s artifacts/pages/archive-duplicates.txt
+          ! grep -Eq '(^/|(^|/)\.\.(/|$))' artifacts/pages/archive-members.txt
+          ! grep -Eq '^[lh]' artifacts/pages/archive-details.txt
+          grep -Fxq '_mcp/v2/current.json' artifacts/pages/archive-members.txt
 
       - name: Re-upload the exact Pages rollback for this recovery run
         if: ${{ steps.evidence.outputs.pages-required == 'true' }}
@@ -318,7 +325,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/pages/extracted
-          tar -xf artifacts/pages/artifact.tar -C artifacts/pages/extracted _mcp/v2/current.json
+          tar -tf artifacts/pages/artifact.tar > artifacts/pages/archive-members-raw.txt
+          locator_member='_mcp/v2/current.json'
+          if grep -Fxq "./$locator_member" artifacts/pages/archive-members-raw.txt; then
+            locator_member="./$locator_member"
+          fi
+          grep -Fxq "$locator_member" artifacts/pages/archive-members-raw.txt
+          tar -xf artifacts/pages/artifact.tar -C artifacts/pages/extracted "$locator_member"
           site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"
           for attempt in {1..30}; do
             if curl --fail --silent --show-error --max-time 10 \

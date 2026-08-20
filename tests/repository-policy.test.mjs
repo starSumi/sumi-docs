@@ -1536,7 +1536,42 @@ test("prior Pages rollback provenance is content-addressed and repository-bound"
   );
   assert.match(priorRun, /_mcp\/server\.json/u);
   assert.match(priorRun, /prior-discovery/u);
+  assert.match(priorRun, /archive-members-raw\.txt/u);
+  assert.match(priorRun, /sed 's#\^\\\.\/##'/u);
+  assert.match(priorRun, /archive-duplicates\.txt/u);
+  assert.match(priorRun, /locator_member="\.\/\$locator_member"/u);
   assert.doesNotMatch(priorRun, /tar\s+-t[v]?f[^\n|]*\|\s*grep\s+[^\n]*-q/u);
+
+  const recoveryArchiveRun = String(
+    workflows.recovery.jobs.observe.steps.find(
+      (step) => step.name === "Verify the preserved Pages archive",
+    )?.run ?? "",
+  );
+  const mainReadbackRun = String(
+    workflows.pages.jobs["rollback-mcp"].steps.find(
+      (step) => step.name === "Verify the compensated public tuple",
+    )?.run ?? "",
+  );
+  const recoveryReadbackRun = String(
+    workflows.recovery.jobs["verify-pages"].steps.find(
+      (step) =>
+        step.name === "Match the public locator to the preserved artifact",
+    )?.run ?? "",
+  );
+  assert.match(recoveryArchiveRun, /sed 's#\^\\\.\/##'/u);
+  assert.match(recoveryArchiveRun, /archive-duplicates\.txt/u);
+  assert.doesNotMatch(
+    recoveryArchiveRun,
+    /tar\s+-t[v]?f[^\n|]*\|\s*grep\s+[^\n]*-q/u,
+  );
+  for (const readbackRun of [mainReadbackRun, recoveryReadbackRun]) {
+    assert.match(readbackRun, /archive-members-raw\.txt/u);
+    assert.match(readbackRun, /locator_member="\.\/\$locator_member"/u);
+    assert.doesNotMatch(
+      readbackRun,
+      /tar\s+-xf[^\n]*\s_mcp\/v2\/current\.json/u,
+    );
+  }
 });
 
 test("production endpoint configuration is explicit HTTPS bootstrap input", () => {
