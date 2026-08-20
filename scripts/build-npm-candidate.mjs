@@ -144,8 +144,40 @@ function pnpm(args) {
   run(process.execPath, [cli, ...args]);
 }
 
-function npm(args, cwd) {
-  run(process.platform === "win32" ? "npm.cmd" : "npm", args, { cwd });
+let windowsNpmCli;
+
+function resolveWindowsNpmCli() {
+  if (windowsNpmCli) return windowsNpmCli;
+  const shims = run("where.exe", ["npm.cmd"], { capture: true })
+    .split(/\r?\n/u)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  for (const shim of shims) {
+    const candidate = join(dirname(shim), "node_modules/npm/bin/npm-cli.js");
+    if (existsSync(candidate)) {
+      windowsNpmCli = candidate;
+      return candidate;
+    }
+  }
+  fail("Unable to resolve npm-cli.js from the Windows PATH.");
+}
+
+function npm(args, cwd, capture = false) {
+  if (process.platform === "win32") {
+    return run(process.execPath, [resolveWindowsNpmCli(), ...args], {
+      cwd,
+      capture,
+    });
+  }
+  return run("npm", args, { cwd, capture });
+}
+
+function packageManagerVersion() {
+  const cli = process.env.npm_execpath;
+  if (!cli || !existsSync(cli)) {
+    fail("Run this command through the pinned pnpm lifecycle.");
+  }
+  return run(process.execPath, [cli, "--version"], { capture: true }).trim();
 }
 
 function tar(args) {
@@ -280,6 +312,11 @@ function buildCandidate({ output, commit }) {
     schemaVersion: 1,
     repository: "https://github.com/starSumi/sumi-docs",
     commit,
+    toolchain: {
+      node: process.version,
+      pnpm: packageManagerVersion(),
+      npm: npm(["--version"], REPOSITORY_ROOT, true).trim(),
+    },
     packages,
     consumerSmoke: "passed",
   };
