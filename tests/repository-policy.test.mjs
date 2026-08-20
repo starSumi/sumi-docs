@@ -1536,6 +1536,7 @@ test("prior Pages rollback provenance is content-addressed and repository-bound"
   );
   assert.match(priorRun, /_mcp\/server\.json/u);
   assert.match(priorRun, /prior-discovery/u);
+  assert.doesNotMatch(priorRun, /tar\s+-t[v]?f[^\n|]*\|\s*grep\s+[^\n]*-q/u);
 });
 
 test("production endpoint configuration is explicit HTTPS bootstrap input", () => {

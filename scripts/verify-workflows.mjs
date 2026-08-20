@@ -546,7 +546,9 @@ export function validateWorkflowPolicy({
     !priorRun.includes("ALLOW_BOOTSTRAP") ||
     !priorRun.includes("artifact.tar") ||
     !priorRun.includes(".expired == false") ||
-    !priorRun.includes("tar -tf") ||
+    !priorRun.includes('tar -tf "$artifact_tar" > "$archive_members"') ||
+    !priorRun.includes('tar -tvf "$artifact_tar" > "$archive_details"') ||
+    /tar\s+-t[v]?f[^\n|]*\|\s*grep\s+[^\n]*-q/u.test(priorRun) ||
     pagesBuild?.outputs?.["pages-artifact"] !==
       "github-pages-${{ github.run_id }}-${{ github.run_attempt }}" ||
     pagesBuild?.outputs?.["image-artifact"] !==
