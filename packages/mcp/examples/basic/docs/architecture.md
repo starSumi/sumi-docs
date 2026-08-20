@@ -16,6 +16,22 @@
 - [ADR-0012: Serve one documentation core over stdio and Streamable HTTP](decisions/0012-dual-transport-and-address-model.md)
 - [ADR-0013: Assign one authority to each public contract](decisions/0013-standards-and-schema-authority.md)
 - [ADR-0014: Build one machine projection for Web and MCP deployment](decisions/0014-single-build-dual-target-publication.md)
+- [ADR-0015: Put the MCP core in Rust behind a thin npm launcher](decisions/0015-rust-core-and-npm-launcher.md)
+
+## Runtime boundary
+
+The current Node.js implementation remains the v0.1 reference runtime. The
+target native topology is a Rust MCP core selected by a thin npm launcher. The
+launcher owns command discovery, platform selection, argument and signal
+forwarding, and fail-closed handling when a verified native binary is absent.
+It does not parse documents, implement MCP tools, download executable code, or
+maintain a second corpus contract.
+
+The Rust core must consume the language-neutral schemas and fixtures from
+`@sumi-os/corpus-contract`. It is not allowed to create Rust-only manifest,
+route, error, or tool authorities. Node/SEA stays available as the accepted
+fallback until the parity, security, lifecycle, distribution, and calibrated
+performance gates in ADR-0015 are complete.
 
 ## Request path
 

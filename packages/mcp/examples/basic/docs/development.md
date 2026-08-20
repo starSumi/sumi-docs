@@ -64,6 +64,27 @@ ADR-0011 defines the blocking thresholds. P99 and maximum are diagnostic; the
 former 100 ms maximum is retained only as a native-runtime stretch target.
 Benchmark probes are measurement code, not alternative product transports.
 
+## Native runtime probe
+
+The isolated Rust probe under `native/` is the first R1 migration artifact. It
+uses the official `rmcp` SDK over stdio and exposes the four public tool names,
+but it intentionally does not load a corpus or ship in the npm package. Use the
+repository-pinned Rust 1.94.0 toolchain:
+
+```powershell
+pnpm run native:check
+pnpm run native:test
+pnpm run native:probe
+pnpm run native:verify
+```
+
+`native:verify` is the local checkpoint: it uses the pinned toolchain, checks
+formatting and Clippy warnings, runs locked tests, and performs a real stdio
+`initialize` plus `tools/list` round trip. The required Ubuntu and Windows CI
+jobs run the same gate. This probe is not corpus parity, Streamable HTTP
+support, or release evidence. Those claims require the R0-R6 gates in
+[ADR-0015](decisions/0015-rust-core-and-npm-launcher.md).
+
 ## Test layout
 
 - `tests/unit/` covers parsers, VFS behavior, CLI parsing, path validation, and

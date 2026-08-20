@@ -23,6 +23,7 @@ coverage/
 .cache/
 temp/
 tmp/
+native/target/
 .agents/
 .claude/
 .codex/

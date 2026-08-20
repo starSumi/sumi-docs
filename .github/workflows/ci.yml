@@ -81,6 +81,11 @@ jobs:
         with:
           node-version-file: .node-version
 
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal --component clippy --component rustfmt
+          rustup show active-toolchain
+
       - name: Install the pinned package manager
         run: |
           npm install --global --ignore-scripts --registry https://registry.npmjs.org pnpm@10.26.0
@@ -91,6 +96,9 @@ jobs:
 
       - name: Verify all workspaces
         run: pnpm run verify
+
+      - name: Verify the Rust runtime probe
+        run: pnpm run verify:native
 
       - name: Verify the Web and MCP contract
         run: pnpm run verify:integration

@@ -15,6 +15,7 @@ description: 阻断能力、命令、阈值、证据和回滚责任。
 | E-C01 | 契约 schema 与规范 revision           | `pnpm run verify:contract`                           | 所有 fixture 和规范化测试通过。                                                                                     |
 | E-W01 | Catalog、语言、路由和 artifact 提交   | `pnpm run verify:web`                                | 无遗漏、重复身份、源漂移、现有输出替换或不完整 artifact 可见。                                                      |
 | E-M01 | MCP 协议、无状态、路径、Unicode、诊断 | `pnpm run verify:mcp`                                | 所有 package 门通过，客户端与 stderr 错误已脱敏。                                                                   |
+| E-N01 | Rust 原生协议探针                     | `pnpm run verify:native`                             | 固定 toolchain、格式、Clippy、locked tests 和真实 stdio `tools/list` 往返通过；这不代表已经满足 R0-R6 parity。      |
 | E-I01 | Web 投影由 MCP 消费                   | `pnpm run verify:integration`                        | v1/v2、URL、语言、摘要和四个稳定 tools 一致。                                                                       |
 | E-H01 | Codex、Claude Code、VS Code 适配器    | `pnpm run verify:hosts` 加人工 trust 检查            | 命令可移植、在 allowlist 内、不重复且经宿主批准。                                                                   |
 | E-S01 | 依赖与仓库策略                        | lock/workflow/host policy verifier 加官方 pnpm audit | 仅批准 registry、固定 action、最小权限且无本地状态。                                                                |

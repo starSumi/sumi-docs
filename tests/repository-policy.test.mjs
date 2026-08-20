@@ -161,6 +161,47 @@ test("npm publication is limited to the reviewed contract and MCP packages", () 
   );
 });
 
+test("the native development checkpoint is pinned and required by CI", () => {
+  const root = JSON.parse(readFileSync("package.json", "utf8"));
+  const mcp = JSON.parse(readFileSync("packages/mcp/package.json", "utf8"));
+  const toolchain = readFileSync("rust-toolchain.toml", "utf8").replaceAll(
+    "\r\n",
+    "\n",
+  );
+  const ci = parse(readFileSync(".github/workflows/ci.yml", "utf8"));
+  const verifySteps = ci.jobs.verify.steps;
+
+  assert.equal(
+    root.scripts["verify:native"],
+    "node scripts/run-workspace-script.mjs packages/mcp native:verify",
+  );
+  assert.equal(
+    mcp.scripts["native:smoke"],
+    "node scripts/smoke-native-probe.mjs",
+  );
+  assert.equal(
+    mcp.scripts["native:verify"],
+    "node --run native:fmt && node --run native:clippy && node --run native:test && node --run native:smoke",
+  );
+  assert.equal(
+    toolchain,
+    '[toolchain]\nchannel = "1.94.0"\ncomponents = ["clippy", "rustfmt"]\nprofile = "minimal"\n',
+  );
+
+  const rustStep = verifySteps.find(
+    (step) => step.name === "Install the pinned Rust toolchain",
+  );
+  assert.match(
+    rustStep.run,
+    /rustup toolchain install 1\.94\.0 --profile minimal --component clippy --component rustfmt/u,
+  );
+  assert.equal(
+    verifySteps.find((step) => step.name === "Verify the Rust runtime probe")
+      ?.run,
+    "pnpm run verify:native",
+  );
+});
+
 test("tracked host adapter validation requires the complete supported set", () => {
   const complete = [...ALLOWED_HOST_FILES].map((path) => ({
     mode: "100644",

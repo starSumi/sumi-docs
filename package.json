@@ -28,6 +28,7 @@
     "verify:mcp": "node scripts/run-workspace-script.mjs packages/corpus-contract build && node scripts/run-workspace-script.mjs packages/mcp verify:push",
     "verify:web": "node scripts/run-workspace-script.mjs apps/web verify:push",
     "verify:contract": "node scripts/run-workspace-script.mjs packages/corpus-contract verify",
+    "verify:native": "node scripts/run-workspace-script.mjs packages/mcp native:verify",
     "verify": "node --run verify:repository-policy && node --run lint && node --run duplication && node --run verify:lockfile && node --run verify:contract && node --run verify:mcp && node --run verify:web && node --run verify:compliance",
     "verify:integration": "node scripts/run-workspace-script.mjs packages/corpus-contract build && node scripts/run-workspace-script.mjs packages/mcp build && node scripts/run-workspace-script.mjs apps/web build && node scripts/run-workspace-script.mjs apps/web verify:mcp && node --run verify:hosts",
     "verify:hosts": "node scripts/verify-host-adapters.mjs",

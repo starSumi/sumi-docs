@@ -42,6 +42,8 @@ test("self-hosted operator documents stay synchronized", async () => {
     "decisions/0011-calibrated-cold-start-policy.md",
     "decisions/0012-dual-transport-and-address-model.md",
     "decisions/0013-standards-and-schema-authority.md",
+    "decisions/0014-single-build-dual-target-publication.md",
+    "decisions/0015-rust-core-and-npm-launcher.md",
     "development.md",
     "getting-started.md",
     "git-workflow.md",
