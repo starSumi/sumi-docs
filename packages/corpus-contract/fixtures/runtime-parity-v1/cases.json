@@ -1,0 +1,5 @@
+{
+  "queries": ["安装", "пакет", "C++", "stall", "shared token"],
+  "fetchPaths": ["guide.mdx", "missing.md"],
+  "openapiEndpoints": [null, "/widgets", "/missing"]
+}

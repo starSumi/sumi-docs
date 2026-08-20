@@ -36,6 +36,9 @@ This file records user-visible changes. Internal phase notes are retained under
 - Added commit-bound npm candidate tarballs for the corpus contract and MCP
   package, including clean-consumer installation, checksums, and provenance
   evidence without publishing to the registry.
+- Added a language-neutral Node/Rust parity fixture for Markdown/MDX parsing,
+  Unicode lexical search, document lookup, and OpenAPI filtering while keeping
+  the Node runtime as the production default.
 
 ## 0.1.0 - 2026-08-12
 

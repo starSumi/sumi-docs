@@ -27,8 +27,8 @@ docs/operations/checkpoints.md: c15c4a9815e81c18e14e9d0ccdacc5bcdaea0151
 docs/zh-cn/operations/checkpoints.md: 880f078567ec8de496b995ef88f97c55388c8c15
 docs/operations/release-readiness.md: 7c8cef695a7822f1a9eb2897603f5c64c1f4fc63
 docs/zh-cn/operations/release-readiness.md: 83e6123f552cc0fffff128908a93c2fb972c7051
-docs/operations/evaluation-matrix.md: 4d5ca9ca5fa653d24cdd8e8f8c3413fef2e0102a
-docs/zh-cn/operations/evaluation-matrix.md: 0a2d922968eee3eea731233fef277f6f46aadb0a
+docs/operations/evaluation-matrix.md: 5778abb8cfc256086eead1587067cff1a5717480
+docs/zh-cn/operations/evaluation-matrix.md: fd6cc3019008e0c23c65fc42df9c54491726feb1
 docs/contributing.md: b8026c0fb3774ce2cdf459fe62a8927cd05158b3
 docs/zh-cn/contributing.md: c97c029a0b1843695cd5824896a9fa81d5e4226a
 docs/skills-and-orchestration.md: a6ffc08ab4c0334d500a29d9b8c4e57b31133295

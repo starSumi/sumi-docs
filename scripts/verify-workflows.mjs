@@ -1,5 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse } from "yaml";
 
@@ -1085,22 +1086,34 @@ export function validateWorkflowPolicy({
   return errors;
 }
 
-function findNestedWorkflowPaths(root) {
-  const results = [];
-  for (const owner of ["apps", "packages"]) {
-    const ownerRoot = join(root, owner);
-    const walk = (directory) => {
-      for (const entry of readdirSync(directory, { withFileTypes: true })) {
-        const path = join(directory, entry.name);
-        if (entry.isDirectory()) walk(path);
-        else if (/[\\/]\.github[\\/]workflows[\\/].+\.ya?ml$/iu.test(path)) {
-          results.push(relative(root, path).replaceAll("\\", "/"));
-        }
-      }
-    };
-    walk(ownerRoot);
+export function findNestedWorkflowPaths(root) {
+  const result = spawnSync(
+    "git",
+    [
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      "-z",
+      "--",
+      "apps",
+      "packages",
+    ],
+    { cwd: root, encoding: "utf8", windowsHide: true },
+  );
+  if (result.status !== 0) {
+    throw new Error(
+      result.stderr.trim() || "Unable to enumerate repository workflow files.",
+    );
   }
-  return results;
+  return result.stdout
+    .split("\0")
+    .filter((path) =>
+      /^(?:apps|packages)\/[^\0]*\/\.github\/workflows\/.+\.ya?ml$/iu.test(
+        path,
+      ),
+    )
+    .sort();
 }
 
 export function loadWorkflowPolicyInput(root = process.cwd()) {

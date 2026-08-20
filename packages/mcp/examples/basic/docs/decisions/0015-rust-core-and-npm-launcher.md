@@ -77,6 +77,16 @@ path remains available for rollback, and a human acceptance record names the
 candidate digest, source commit, corpus revision, supported targets, and next
 rollback command. A failed or incomplete gate leaves Node/SEA as the default.
 
+## Implementation status
+
+The native crate currently satisfies the stdio `tools/list` probe within R1
+and an initial subset of R2. A shared fixture compares Markdown/MDX
+frontmatter and text extraction, Unicode lexical search, document lookup, and
+OpenAPI filtering against the Node reference field by field. This is not full
+R1 or R2 completion: Streamable HTTP, strict tool execution, manifest v1/v2,
+routes, security, lifecycle, distribution, and performance gates remain open.
+Node/SEA remains the default runtime.
+
 ## Consequences
 
 This separates installation ergonomics from runtime correctness and gives the

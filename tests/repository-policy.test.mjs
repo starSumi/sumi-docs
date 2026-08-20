@@ -46,6 +46,7 @@ import {
   verifyNotices,
 } from "../scripts/verify-compliance-artifacts.mjs";
 import {
+  findNestedWorkflowPaths,
   loadWorkflowPolicyInput,
   validateWorkflowPolicy,
 } from "../scripts/verify-workflows.mjs";
@@ -181,7 +182,11 @@ test("the native development checkpoint is pinned and required by CI", () => {
   );
   assert.equal(
     mcp.scripts["native:verify"],
-    "node --run native:fmt && node --run native:clippy && node --run native:test && node --run native:smoke",
+    "node --run native:fmt && node --run native:clippy && node --run native:test && node --run native:smoke && node --run native:parity",
+  );
+  assert.equal(
+    mcp.scripts["native:parity"],
+    "node --import tsx scripts/verify-native-corpus-parity.mjs",
   );
   assert.equal(
     toolchain,
@@ -902,6 +907,42 @@ test("active workflows enforce privilege and supersession boundaries", () => {
     ),
   );
   assert.ok(errors.some((error) => error.includes("Pages promotion")));
+});
+
+test("nested workflow discovery ignores generated trees", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "sumi-workflow-policy-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const init = spawnSync("git", ["init", "--quiet"], {
+    cwd: root,
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  assert.equal(init.status, 0, init.stderr);
+  writeFileSync(join(root, ".gitignore"), "**/target/\n");
+
+  const applicationWorkflow = join(
+    root,
+    "apps",
+    "example",
+    ".github",
+    "workflows",
+  );
+  const generatedWorkflow = join(
+    root,
+    "packages",
+    "example",
+    "target",
+    ".github",
+    "workflows",
+  );
+  mkdirSync(applicationWorkflow, { recursive: true });
+  mkdirSync(generatedWorkflow, { recursive: true });
+  writeFileSync(join(applicationWorkflow, "nested.yml"), "name: nested\n");
+  writeFileSync(join(generatedWorkflow, "ignored.yml"), "name: ignored\n");
+
+  assert.deepEqual(findNestedWorkflowPaths(root), [
+    "apps/example/.github/workflows/nested.yml",
+  ]);
 });
 
 test("container acceptance builds the corpus contract before projection", () => {

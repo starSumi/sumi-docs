@@ -66,9 +66,10 @@ Benchmark probes are measurement code, not alternative product transports.
 
 ## Native runtime probe
 
-The isolated Rust probe under `native/` is the first R1 migration artifact. It
-uses the official `rmcp` SDK over stdio and exposes the four public tool names,
-but it intentionally does not load a corpus or ship in the npm package. Use the
+The isolated Rust crate under `native/` is a migration probe. It uses the
+official `rmcp` SDK over stdio, exposes the four public tool names, and compares
+a small corpus implementation with the Node reference over one
+language-neutral fixture. It does not ship in the npm package. Use the
 repository-pinned Rust 1.94.0 toolchain:
 
 ```powershell
@@ -80,9 +81,13 @@ pnpm run native:verify
 
 `native:verify` is the local checkpoint: it uses the pinned toolchain, checks
 formatting and Clippy warnings, runs locked tests, and performs a real stdio
-`initialize` plus `tools/list` round trip. The required Ubuntu and Windows CI
-jobs run the same gate. This probe is not corpus parity, Streamable HTTP
-support, or release evidence. Those claims require the R0-R6 gates in
+`initialize` plus `tools/list` round trip. It also compares Markdown/MDX
+frontmatter and text extraction, Unicode lexical search, document lookup, and
+OpenAPI filtering field by field with the Node implementation. The required
+Ubuntu and Windows CI jobs run the same gate. Manifest v1/v2 acquisition,
+routes, Streamable HTTP, security, lifecycle, distribution, and performance
+remain open. This probe is not full corpus parity or release evidence. Those
+claims require the R0-R6 gates in
 [ADR-0015](decisions/0015-rust-core-and-npm-launcher.md).
 
 ## Test layout
