@@ -790,6 +790,9 @@ export function validateWorkflowPolicy({
     !checkpointRun.includes("GITHUB_RUN_ATTEMPT") ||
     !checkpointRun.includes("CORPUS_REVISION") ||
     !checkpointRun.includes("DEPLOY_PUBLIC_MCP_READINESS_URL") ||
+    !checkpointRun.includes(
+      'site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH%/}/"',
+    ) ||
     checkpointUpload?.with?.name !==
       "release-checkpoint-${{ github.run_id }}-${{ github.run_attempt }}" ||
     checkpointUpload?.with?.path !==

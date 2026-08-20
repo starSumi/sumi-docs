@@ -885,7 +885,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/checkpoint
-          site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"
+          site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH%/}/"
           checkpoint_args=(observe
             --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
             --commit "$GITHUB_SHA"

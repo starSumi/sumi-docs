@@ -822,6 +822,22 @@ test("production release checkpoint cannot be weakened", () => {
       error.includes("Release checkpoint"),
     ),
   );
+
+  const nonCanonicalSiteRoot = loadWorkflowPolicyInput();
+  const checkpointStep = nonCanonicalSiteRoot.pages.jobs[
+    "release-checkpoint"
+  ].steps.find(
+    (step) => step.name === "Observe and seal the public release tuple",
+  );
+  checkpointStep.run = checkpointStep.run.replace(
+    'site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH%/}/"',
+    'site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"',
+  );
+  assert.ok(
+    validateWorkflowPolicy(nonCanonicalSiteRoot).some((error) =>
+      error.includes("Release checkpoint"),
+    ),
+  );
 });
 
 test("production deployment evidence is digest-pinned and corpus-bound", () => {
