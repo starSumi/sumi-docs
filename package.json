@@ -31,7 +31,7 @@
     "verify": "node --run verify:repository-policy && node --run lint && node --run duplication && node --run verify:lockfile && node --run verify:contract && node --run verify:mcp && node --run verify:web && node --run verify:compliance",
     "verify:integration": "node scripts/run-workspace-script.mjs packages/corpus-contract build && node scripts/run-workspace-script.mjs packages/mcp build && node scripts/run-workspace-script.mjs apps/web build && node scripts/run-workspace-script.mjs apps/web verify:mcp && node --run verify:hosts",
     "verify:hosts": "node scripts/verify-host-adapters.mjs",
-    "verify:repository-policy": "node --test tests/repository-policy.test.mjs && node scripts/verify-host-files.mjs --tracked && node scripts/verify-workflows.mjs && node --run verify:deployment-assets && node scripts/verify-translation-pairing.mjs",
+    "verify:repository-policy": "node --test tests/repository-policy.test.mjs tests/release-checkpoint.test.mjs && node scripts/verify-host-files.mjs --tracked && node scripts/verify-workflows.mjs && node --run verify:deployment-assets && node scripts/verify-translation-pairing.mjs",
     "verify:deployment-assets": "node scripts/verify-deployment-assets.mjs",
     "verify:i18n": "node scripts/verify-translation-pairing.mjs",
     "verify:lockfile": "node scripts/verify-lockfile.mjs",

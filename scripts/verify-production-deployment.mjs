@@ -103,6 +103,7 @@ export function productionArtifactNames(runId, runAttempt) {
     switch: `mcp-switch-${coordinate}`,
     switchObservation: `mcp-switch-observation-${coordinate}`,
     rollbackPages: `github-pages-rollback-${coordinate}`,
+    checkpoint: `release-checkpoint-${coordinate}`,
   };
 }
 

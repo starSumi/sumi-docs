@@ -434,6 +434,7 @@ export function validateWorkflowPolicy({
     "deploy-pages",
     "final-acceptance",
     "finalize-mcp",
+    "release-checkpoint",
     "compensation-plan",
     "rollback-pages",
     "rollback-mcp",
@@ -744,6 +745,53 @@ export function validateWorkflowPolicy({
   ) {
     errors.push(
       "Final acceptance must verify Pages-only absence or the complete remote tuple before protected finalization.",
+    );
+  }
+
+  const releaseCheckpoint = productionJobs["release-checkpoint"];
+  const checkpointSteps = releaseCheckpoint?.steps ?? [];
+  const checkpointObservation = checkpointSteps.find(
+    (step) => step.name === "Observe and seal the public release tuple",
+  );
+  const checkpointUpload = checkpointSteps.find(
+    (step) => step.name === "Upload immutable release checkpoint",
+  );
+  const checkpointRun = String(checkpointObservation?.run ?? "");
+  if (
+    !needsExactly(releaseCheckpoint, [
+      "build",
+      "final-acceptance",
+      "finalize-mcp",
+    ]) ||
+    releaseCheckpoint?.environment !== undefined ||
+    !sameKeys(releaseCheckpoint?.permissions, ["contents"]) ||
+    releaseCheckpoint?.permissions?.contents !== "read" ||
+    !String(releaseCheckpoint?.if ?? "").includes("always()") ||
+    !String(releaseCheckpoint?.if ?? "").includes(
+      "needs.final-acceptance.result == 'success'",
+    ) ||
+    !String(releaseCheckpoint?.if ?? "").includes(
+      "needs.build.outputs.remote-enabled == 'false'",
+    ) ||
+    !String(releaseCheckpoint?.if ?? "").includes(
+      "needs.finalize-mcp.result == 'success'",
+    ) ||
+    !checkpointRun.includes("release-checkpoint.mjs") ||
+    !checkpointRun.includes("observe") ||
+    !checkpointRun.includes("verify") ||
+    !checkpointRun.includes("GITHUB_RUN_ID") ||
+    !checkpointRun.includes("GITHUB_RUN_ATTEMPT") ||
+    !checkpointRun.includes("CORPUS_REVISION") ||
+    !checkpointRun.includes("DEPLOY_PUBLIC_MCP_READINESS_URL") ||
+    checkpointUpload?.with?.name !==
+      "release-checkpoint-${{ github.run_id }}-${{ github.run_attempt }}" ||
+    checkpointUpload?.with?.path !==
+      "artifacts/checkpoint/release-checkpoint.json" ||
+    checkpointUpload?.with?.["if-no-files-found"] !== "error" ||
+    checkpointUpload?.with?.["retention-days"] !== 90
+  ) {
+    errors.push(
+      "Release checkpoint must follow public readback and bind the exact run attempt and corpus generation.",
     );
   }
 

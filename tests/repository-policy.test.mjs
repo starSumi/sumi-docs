@@ -801,6 +801,29 @@ test("container acceptance builds the corpus contract before projection", () => 
   );
 });
 
+test("production release checkpoint cannot be weakened", () => {
+  const missingDependency = loadWorkflowPolicyInput();
+  missingDependency.pages.jobs["release-checkpoint"].needs = [
+    "build",
+    "final-acceptance",
+  ];
+  assert.ok(
+    validateWorkflowPolicy(missingDependency).some((error) =>
+      error.includes("Release checkpoint"),
+    ),
+  );
+
+  const mutableArtifact = loadWorkflowPolicyInput();
+  mutableArtifact.pages.jobs["release-checkpoint"].steps.find(
+    (step) => step.name === "Upload immutable release checkpoint",
+  ).with.name = "release-checkpoint-latest";
+  assert.ok(
+    validateWorkflowPolicy(mutableArtifact).some((error) =>
+      error.includes("Release checkpoint"),
+    ),
+  );
+});
+
 test("production deployment evidence is digest-pinned and corpus-bound", () => {
   const commit = "a".repeat(40);
   const corpusRevision = `sha256:${"b".repeat(64)}`;
@@ -1194,6 +1217,7 @@ test("production artifact inventory is bound to run ID and attempt", () => {
       { id: 4, name: attempt2.record, expired: false },
       { id: 5, name: attempt2.switch, expired: false },
       { id: 6, name: attempt2.rollbackPages, expired: false },
+      { id: 7, name: attempt2.checkpoint, expired: false },
     ],
   };
   assert.deepEqual(selectRecoveryArtifacts(inventory, "700", "2"), {

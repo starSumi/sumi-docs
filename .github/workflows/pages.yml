@@ -831,6 +831,69 @@ jobs:
             "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" bash -s -- finalize "$GITHUB_SHA" "$IMAGE_REF" \
             < scripts/deploy-remote-mcp.sh
 
+  release-checkpoint:
+    name: Seal the observed CP7 release checkpoint
+    needs: [build, final-acceptance, finalize-mcp]
+    if: ${{ always() && needs.final-acceptance.result == 'success' && (needs.build.outputs.remote-enabled == 'false' || needs.finalize-mcp.result == 'success') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out checkpoint procedure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Observe and seal the public release tuple
+        env:
+          REMOTE_ENABLED: ${{ needs.build.outputs.remote-enabled }}
+          DEPLOY_PUBLIC_MCP_URL: ${{ needs.build.outputs.mcp-url }}
+          DEPLOY_PUBLIC_MCP_READINESS_URL: ${{ needs.build.outputs.readiness-url }}
+          CORPUS_REVISION: ${{ needs.build.outputs.corpus-revision }}
+          SITE_ORIGIN: ${{ needs.build.outputs.site-origin }}
+          SITE_BASE_PATH: ${{ needs.build.outputs.site-base-path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/checkpoint
+          site_root="${SITE_ORIGIN%/}${SITE_BASE_PATH}"
+          checkpoint_args=(observe
+            --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+            --commit "$GITHUB_SHA"
+            --run-id "$GITHUB_RUN_ID"
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+            --site-root "$site_root"
+            --corpus-revision "$CORPUS_REVISION"
+            --remote-enabled "$REMOTE_ENABLED"
+            --output artifacts/checkpoint/release-checkpoint.json)
+          if [[ "$REMOTE_ENABLED" = true ]]; then
+            checkpoint_args+=(
+              --mcp-url "$DEPLOY_PUBLIC_MCP_URL"
+              --readiness-url "$DEPLOY_PUBLIC_MCP_READINESS_URL")
+          fi
+          node scripts/release-checkpoint.mjs "${checkpoint_args[@]}"
+          node scripts/release-checkpoint.mjs verify \
+            --input artifacts/checkpoint/release-checkpoint.json \
+            --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --corpus-revision "$CORPUS_REVISION"
+
+      - name: Upload immutable release checkpoint
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-checkpoint-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/checkpoint/release-checkpoint.json
+          if-no-files-found: error
+          retention-days: 90
+
   compensation-plan:
     name: Decide compensation from completed job results
     needs:

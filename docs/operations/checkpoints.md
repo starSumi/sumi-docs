@@ -49,6 +49,27 @@ Mutable leases, retries, cursors, processes, caches, queues, SQLite files, WAL,
 and acknowledgements belong in the platform user-data directory, never in this
 repository, its parent `.sumi`, or an agent-host directory.
 
+## Executable evidence
+
+The production workflow runs `scripts/release-checkpoint.mjs observe` only after
+public Pages readback and, when enabled, protected remote MCP finalization. The
+observer collects the live locator, immutable manifest, discovery metadata, and
+readiness response in one process. It emits a strict CP7 record only when every
+condition is `True`, then uploads that record as
+`release-checkpoint-<run-id>-<run-attempt>`.
+
+Use `verify` to bind a downloaded checkpoint to its expected repository,
+commit, run attempt, and corpus revision. A maintainer may write a manual
+observation below ignored `artifacts/`; checkpoint instances are not repository
+source. `observedAt` is diagnostic time, not an ordering cursor. Run ID, run
+attempt, source commit, and corpus revision provide identity.
+
+CP0-CP4 remain Git, PR, and required-check evidence. CP5 is the immutable
+acceptance-candidate artifact. CP6 exists only when an accountable human or a
+protected environment records acceptance. CP7 is the post-promotion checkpoint
+artifact. None of these records authorizes mutable state inside the read-only
+MCP server.
+
 ## Future managed controller gate
 
 The current product does not require a background controller. If continuous

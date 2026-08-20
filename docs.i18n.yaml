@@ -23,8 +23,8 @@ docs/product/engineering-records.md: 91386ddae14bc6941919a64777657c3f8477564f
 docs/zh-cn/product/engineering-records.md: 4ce66f176863b77f68dab6059a9a25c5c44a781a
 docs/security.md: f699e12b1f70633cc7418d9537c4db2cbd4e5132
 docs/zh-cn/security.md: 37ee615083c56bedd397647e3ca9d8a8d58830b2
-docs/operations/checkpoints.md: bac27398e97c78c579943e5fad9b8f57208060c5
-docs/zh-cn/operations/checkpoints.md: 1d608abdfcae9050f56897bc63367430debb54cb
+docs/operations/checkpoints.md: c15c4a9815e81c18e14e9d0ccdacc5bcdaea0151
+docs/zh-cn/operations/checkpoints.md: 880f078567ec8de496b995ef88f97c55388c8c15
 docs/operations/release-readiness.md: 7c8cef695a7822f1a9eb2897603f5c64c1f4fc63
 docs/zh-cn/operations/release-readiness.md: 83e6123f552cc0fffff128908a93c2fb972c7051
 docs/operations/evaluation-matrix.md: 10e0842dd077bd7643b2598132bd269ab923c3d9
