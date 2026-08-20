@@ -14,6 +14,7 @@ import {
 import {
   HARD_KILL_AFTER_MS,
   MAX_STDOUT_BYTES,
+  TIMEOUT_MS,
   measureOnce,
 } from "../../scripts/cold-start-measurement.mjs";
 
@@ -321,7 +322,7 @@ test("measurement timeout and stdout limits always resolve a failed outcome", as
       ],
       expectedToolNames: [],
     },
-    { timeoutMs: 1_000, maxStdoutBytes: 128, hardKillAfterMs: 25 },
+    { timeoutMs: TIMEOUT_MS, maxStdoutBytes: 128, hardKillAfterMs: 25 },
   );
   assert.equal(oversized.status, "error");
   assert.match(oversized.message, /stdout exceeded 128 bytes/u);
