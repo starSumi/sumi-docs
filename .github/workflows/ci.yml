@@ -65,7 +65,18 @@ jobs:
           done
 
       - name: Reject non-public identities in reachable history
-        run: pnpm run verify:public-history
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" = 'pull_request' ]]; then
+            history_ref="$PR_HEAD_SHA"
+          else
+            history_ref="$GITHUB_SHA"
+          fi
+          node scripts/verify-public-history.mjs --ref "$history_ref"
 
   verify:
     name: Verify (${{ matrix.os }})

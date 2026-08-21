@@ -214,18 +214,31 @@ test("CI rejects non-public identities across reachable history", () => {
   const commitMessageStep = commitPolicySteps.find(
     (step) => step.name === "Validate every new commit message",
   );
+  const publicHistoryStep = commitPolicySteps.find(
+    (step) => step.name === "Reject non-public identities in reachable history",
+  );
 
   assert.equal(
     root.scripts["verify:public-history"],
     "node scripts/verify-public-history.mjs --ref HEAD",
   );
+  assert.equal(publicHistoryStep.shell, "bash");
+  assert.equal(publicHistoryStep.env.EVENT_NAME, "${{ github.event_name }}");
   assert.equal(
-    commitPolicySteps.find(
-      (step) =>
-        step.name === "Reject non-public identities in reachable history",
-    )?.run,
-    "pnpm run verify:public-history",
+    publicHistoryStep.env.PR_HEAD_SHA,
+    "${{ github.event.pull_request.head.sha }}",
   );
+  assert.match(
+    publicHistoryStep.run,
+    /if \[\[ "\$EVENT_NAME" = 'pull_request' \]\]/u,
+  );
+  assert.match(publicHistoryStep.run, /history_ref="\$PR_HEAD_SHA"/u);
+  assert.match(publicHistoryStep.run, /history_ref="\$GITHUB_SHA"/u);
+  assert.match(
+    publicHistoryStep.run,
+    /node scripts\/verify-public-history\.mjs --ref "\$history_ref"/u,
+  );
+  assert.doesNotMatch(publicHistoryStep.run, /--ref HEAD/u);
   assert.match(
     commitMessageStep.run,
     /pnpm exec commitlint --edit "\$message_file"/u,

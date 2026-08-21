@@ -403,14 +403,14 @@ jobs:
 
       - name: Upload bootstrap Pages rollback artifact
         if: ${{ steps.prior.outputs.site == 'false' }}
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           name: github-pages-rollback-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/bootstrap-rollback
           retention-days: 30
 
       - name: Upload verified Pages artifact
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: apps/web/dist
@@ -454,7 +454,7 @@ jobs:
           node-version-file: .node-version
 
       - name: Download exact OCI input
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.image-artifact }}
           path: artifacts/deployment
@@ -515,13 +515,13 @@ jobs:
           node-version-file: .node-version
 
       - name: Download exact OCI input
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.image-artifact }}
           path: artifacts/deployment
 
       - name: Download digest-bound deployment record
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.publish-image.outputs.record-artifact }}
           path: artifacts/deployment
@@ -663,7 +663,7 @@ jobs:
           node-version-file: .node-version
 
       - name: Download exact OCI identity
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.image-artifact }}
           path: artifacts/deployment
@@ -737,7 +737,7 @@ jobs:
     steps:
       - name: Deploy verified artifact
         id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
         with:
           artifact_name: ${{ needs.build.outputs.pages-artifact }}
 
@@ -996,7 +996,7 @@ jobs:
     steps:
       - name: Redeploy preserved artifact
         id: rollback
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
         with:
           artifact_name: ${{ needs.build.outputs.rollback-artifact }}
 
@@ -1036,13 +1036,13 @@ jobs:
 
       - name: Download the exact Pages rollback evidence
         if: ${{ needs.compensation-plan.outputs.restore-pages == 'true' }}
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.rollback-artifact }}
           path: artifacts/pages
 
       - name: Download exact OCI identity
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.build.outputs.image-artifact }}
           path: artifacts/deployment
