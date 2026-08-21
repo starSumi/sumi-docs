@@ -87,7 +87,7 @@ jobs:
 
       - name: Download the exact failed-run Pages rollback
         if: ${{ steps.evidence.outputs.pages-required == 'true' }}
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: github-pages-rollback-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
           path: artifacts/pages
@@ -151,7 +151,7 @@ jobs:
           node-version-file: .node-version
 
       - name: Download the exact deployment record
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: mcp-deployment-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
           path: artifacts/deployment
@@ -179,7 +179,7 @@ jobs:
 
       - name: Verify optional failed-run switch artifact
         if: ${{ needs.observe.outputs.switch-present == 'true' }}
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: mcp-switch-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
           path: artifacts/deployment
@@ -289,7 +289,7 @@ jobs:
     steps:
       - name: Redeploy the preserved Pages artifact
         id: rollback
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
         with:
           artifact_name: ${{ needs.observe.outputs.rollback-artifact }}
 
@@ -307,7 +307,7 @@ jobs:
       corpus-revision: ${{ steps.readback.outputs.corpus-revision }}
     steps:
       - name: Download the exact re-uploaded Pages rollback
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.observe.outputs.rollback-artifact }}
           path: artifacts/pages
