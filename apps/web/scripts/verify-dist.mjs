@@ -397,7 +397,9 @@ assert.match(apiReference, /@sumi-os\/corpus-contract/);
 assert.match(apiReference, /<main[^>]+lang="en"/);
 assert.doesNotMatch(apiReference, /[A-Z]:\\/u);
 assert.match(chineseApiFallback, /<main[^>]+lang="en"/);
-assert.match(chineseApiFallback, /此内容尚不支持你的语言/);
+assert.match(chineseApiFallback, /API 语言/);
+assert.match(chineseApiFallback, /API 参考目前以英文为规范源/);
+assert.doesNotMatch(chineseApiFallback, /此内容尚不支持你的语言/);
 
 for (const document of englishDocuments) {
   const chineseDocument = `zh-cn/${document}`;

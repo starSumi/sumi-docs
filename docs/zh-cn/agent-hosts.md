@@ -52,6 +52,23 @@ Agent 宿主就是 MCP client。远程部署时，支持 Streamable HTTP 的宿�
 可选的 `$sumi-docs-maintain` Skill 只负责维护路由：帮助 Agent 判断仓库改动属于哪个
 package、需要哪些验证门。它不是协议依赖，也不会通过 MCP 写入文档。
 
+## 自然语言请求
+
+自然语言交互属于 Agent host。宿主可以把“如何配置远程 corpus？”转换为受限的调用序列：
+
+1. 在未知 corpus 身份时调用 `list_docs`；
+2. 用用户关键词调用 `search_docs`；
+3. 对选中的 source 调用 `fetch_doc`，并保留返回的 path 作为引用；
+4. 只有请求涉及已发布 API 时才调用 `get_openapi_spec`。
+
+宿主负责生成答案，并引用返回的文档 path 或公开 URL。Sumi-Docs-MCP 不解析 prompt、不
+选择模型、不保存对话历史，也不要求 API key。未来类似 Codex 的集成可以在同一 MCP 契约
+外增加 Agent 或 provider adapter，而无需修改 server 或经过审阅的语料。
+
+当模型把返回的段落作为上下文时，这一步属于 retrieval-augmented generation。当前实现
+是确定性的词法检索，不是 embedding 或向量数据库。微调既不是必需项，也不是保持文档最新
+的机制；应更新语料、重新构建或重启进程，再由宿主检索新的 revision。
+
 ## 默认目录与导航
 
 未提供 CLI source 时，`sumi-docs.config.json` 选择根 `docs/`。如果没有该文件，发现逻辑

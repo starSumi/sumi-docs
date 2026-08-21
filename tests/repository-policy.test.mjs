@@ -211,6 +211,9 @@ test("CI rejects non-public identities across reachable history", () => {
   const root = JSON.parse(readFileSync("package.json", "utf8"));
   const ci = parse(readFileSync(".github/workflows/ci.yml", "utf8"));
   const commitPolicySteps = ci.jobs["commit-policy"].steps;
+  const commitMessageStep = commitPolicySteps.find(
+    (step) => step.name === "Validate every new commit message",
+  );
 
   assert.equal(
     root.scripts["verify:public-history"],
@@ -222,6 +225,28 @@ test("CI rejects non-public identities across reachable history", () => {
         step.name === "Reject non-public identities in reachable history",
     )?.run,
     "pnpm run verify:public-history",
+  );
+  assert.match(
+    commitMessageStep.run,
+    /pnpm exec commitlint --edit "\$message_file"/u,
+  );
+  assert.doesNotMatch(commitMessageStep.run, /commitlint -- --edit/u);
+  assert.match(
+    commitMessageStep.run,
+    /git cat-file -e "\$EVENT_BEFORE\^\{commit\}"/u,
+  );
+  assert.match(
+    commitMessageStep.run,
+    /git merge-base --is-ancestor "\$EVENT_BEFORE" "\$GITHUB_SHA"/u,
+  );
+  assert.match(commitMessageStep.run, /commit_args=\("\$GITHUB_SHA"\)/u);
+  assert.match(
+    commitMessageStep.run,
+    /git rev-list --reverse "\$\{commit_args\[@\]\}"/u,
+  );
+  assert.doesNotMatch(
+    commitMessageStep.run,
+    /range="\$EVENT_BEFORE\.\.\$GITHUB_SHA"/u,
   );
 });
 
@@ -405,8 +430,17 @@ test("the install lifecycle requires the pinned pnpm version", () => {
   ]) {
     const hook = readFileSync(hookPath, "utf8");
     assert.match(hook, /command -v volta/u);
-    assert.match(hook, /volta run --node 25\.5\.0 -- pnpm run/u);
-    assert.match(hook, /else\n {2}pnpm run (?:commitlint|lint:staged|verify)/u);
+    if (hookPath === ".husky/commit-msg") {
+      assert.match(
+        hook,
+        /volta run --node 25\.5\.0 -- pnpm exec commitlint --edit "\$1"/u,
+      );
+      assert.match(hook, /else\n {2}pnpm exec commitlint --edit "\$1"/u);
+      assert.doesNotMatch(hook, /commitlint -- --edit/u);
+    } else {
+      assert.match(hook, /volta run --node 25\.5\.0 -- pnpm run/u);
+      assert.match(hook, /else\n {2}pnpm run (?:lint:staged|verify)/u);
+    }
   }
 
   const rootPackageManifest = JSON.parse(readFileSync("package.json", "utf8"));
@@ -738,8 +772,8 @@ test("README translations require an exact confirmed content pair", () => {
 });
 
 test("the content catalog drives a complete bilingual freshness baseline", () => {
-  assert.equal(DOC_TRANSLATION_PATHS.length, 38);
-  assert.equal(new Set(DOC_TRANSLATION_PATHS).size, 38);
+  assert.equal(DOC_TRANSLATION_PATHS.length, 46);
+  assert.equal(new Set(DOC_TRANSLATION_PATHS).size, 46);
   assert.ok(DOC_TRANSLATION_PATHS.every((path) => path.startsWith("docs/")));
 
   const contents = new Map(

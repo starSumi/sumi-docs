@@ -79,7 +79,7 @@ look cleaner.
 Validate a message without creating a commit:
 
 ```powershell
-pnpm run commitlint -- --edit path\to\commit-message.txt
+pnpm exec commitlint --edit path\to\commit-message.txt
 node scripts/git-hooks/reject-agent-attribution.mjs path\to\commit-message.txt
 ```
 

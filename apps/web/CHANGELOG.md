@@ -14,6 +14,12 @@ This file records user-visible changes to the documentation site.
   configuration.
 - Added generated-output checks for canonical URLs, sitemaps, exact-case API
   routes, and every local HTML reference.
+- Added public benchmark methodology and reference results with explicit
+  source, runtime, environment, workload, and release-evidence boundaries.
+- Replaced the generated API translation warning with a localized notice that
+  identifies English as the current canonical API source.
+- Added reader-facing changelog, standards, and observability pages to the
+  reviewed bilingual catalog.
 
 ## 0.1.0 - 2026-08-14
 

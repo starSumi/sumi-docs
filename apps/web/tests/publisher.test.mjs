@@ -73,13 +73,13 @@ test("one reviewed catalog drives custom sidebar slugs and publisher routes", ()
   ]);
 });
 
-test("the product catalog preserves all 38 reviewed document variants", () => {
+test("the product catalog preserves all 46 reviewed document variants", () => {
   const options = normalizePublisherOptions({
     catalog: contentCatalog,
     openapi: "openapi.json",
   });
-  assert.equal(options.documents.length, 38);
-  assert.equal(new Set(options.documents.map(({ source }) => source)).size, 38);
+  assert.equal(options.documents.length, 46);
+  assert.equal(new Set(options.documents.map(({ source }) => source)).size, 46);
   const byIdentity = new Map(
     options.documents.map((entry) => [`${entry.id}:${entry.locale}`, entry]),
   );

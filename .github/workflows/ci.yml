@@ -47,17 +47,19 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" = 'pull_request' ]]; then
-            range="$PR_BASE_SHA..$PR_HEAD_SHA"
-          elif [[ -n "$EVENT_BEFORE" && ! "$EVENT_BEFORE" =~ ^0+$ ]]; then
-            range="$EVENT_BEFORE..$GITHUB_SHA"
+            commit_args=("$PR_HEAD_SHA" "^$PR_BASE_SHA")
+          elif [[ -n "$EVENT_BEFORE" && ! "$EVENT_BEFORE" =~ ^0+$ ]] &&
+            git cat-file -e "$EVENT_BEFORE^{commit}" 2>/dev/null &&
+            git merge-base --is-ancestor "$EVENT_BEFORE" "$GITHUB_SHA"; then
+            commit_args=("$GITHUB_SHA" "^$EVENT_BEFORE")
           else
-            range="$GITHUB_SHA"
+            commit_args=("$GITHUB_SHA")
           fi
 
           message_file="$RUNNER_TEMP/commit-message.txt"
-          git rev-list --reverse "$range" | while read -r commit; do
+          git rev-list --reverse "${commit_args[@]}" | while read -r commit; do
             git show -s --format=%B "$commit" > "$message_file"
-            pnpm run commitlint -- --edit "$message_file"
+            pnpm exec commitlint --edit "$message_file"
             node packages/mcp/scripts/git-hooks/reject-agent-attribution.mjs "$message_file"
             node packages/mcp/scripts/git-hooks/reject-agent-identity.mjs --commit "$commit"
           done

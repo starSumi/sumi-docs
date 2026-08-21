@@ -46,6 +46,15 @@ store or a prerequisite for tool discovery. Agents should prefer the MCP
 projection for ordinary documentation questions and inspect source and tests
 when changing or verifying implementation behavior.
 
+## Retrieval versus model training
+
+The server is a retrieval substrate. Its lexical search and exact document
+fetches can supply context to an agent host, which is the RAG pattern when a
+model uses that context to answer. There is no embedding index, vector store,
+or model-weight update in this repository. Fine-tuning is therefore outside
+the freshness path: a changed document is published as a new corpus revision
+and loaded after the process is rebuilt or restarted.
+
 ## Maintainer Skill
 
 Local developers may install the optional `$sumi-docs-maintain` role in their

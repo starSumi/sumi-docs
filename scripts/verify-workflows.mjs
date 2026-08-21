@@ -139,6 +139,29 @@ export function validateWorkflowPolicy({
     ci.jobs?.["commit-policy"],
     errors,
   );
+  const commitPolicySteps = workflowSteps({
+    jobs: { "commit-policy": ci.jobs?.["commit-policy"] },
+  });
+  const commitMessageRun = String(
+    commitPolicySteps.find(
+      (step) => step.name === "Validate every new commit message",
+    )?.run ?? "",
+  );
+  if (
+    !commitMessageRun.includes('pnpm exec commitlint --edit "$message_file"') ||
+    commitMessageRun.includes("commitlint -- --edit") ||
+    !commitMessageRun.includes('git cat-file -e "$EVENT_BEFORE^{commit}"') ||
+    !commitMessageRun.includes(
+      'git merge-base --is-ancestor "$EVENT_BEFORE" "$GITHUB_SHA"',
+    ) ||
+    !commitMessageRun.includes('commit_args=("$GITHUB_SHA")') ||
+    !commitMessageRun.includes('git rev-list --reverse "${commit_args[@]}"') ||
+    commitMessageRun.includes('range="$EVENT_BEFORE..$GITHUB_SHA"')
+  ) {
+    errors.push(
+      "CI commit policy must validate each materialized message file and fail safe across rewritten pushes.",
+    );
+  }
   validatePnpmLifecycle("CI", "verify", ci.jobs?.verify, errors);
   const container = ci.jobs?.container;
   validatePnpmLifecycle("CI", "container", container, errors);

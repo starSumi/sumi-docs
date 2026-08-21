@@ -527,6 +527,19 @@ const documents = [
     },
   }),
   bilingualDocument({
+    id: "observability",
+    sectionId: "operate",
+    order: 40,
+    sidebarSlug: "observability",
+    label: "Observability and tracking",
+    translation: "可观测性与跟踪",
+    english: { source: "observability.md", route: "/observability/" },
+    chinese: {
+      source: "zh-cn/observability.md",
+      route: "/zh-cn/observability/",
+    },
+  }),
+  bilingualDocument({
     id: "product-requirements",
     sectionId: "governance",
     order: 10,
@@ -588,6 +601,19 @@ const documents = [
     },
   }),
   bilingualDocument({
+    id: "changelog",
+    sectionId: "governance",
+    order: 25,
+    sidebarSlug: "changelog",
+    label: "Changelog",
+    translation: "版本演进",
+    english: { source: "changelog.md", route: "/changelog/" },
+    chinese: {
+      source: "zh-cn/changelog.md",
+      route: "/zh-cn/changelog/",
+    },
+  }),
+  bilingualDocument({
     id: "release-readiness",
     sectionId: "governance",
     order: 30,
@@ -604,6 +630,19 @@ const documents = [
     },
   }),
   bilingualDocument({
+    id: "benchmarks",
+    sectionId: "governance",
+    order: 35,
+    sidebarSlug: "benchmarks",
+    label: "Benchmarks",
+    translation: "性能基准",
+    english: { source: "benchmarks.md", route: "/benchmarks/" },
+    chinese: {
+      source: "zh-cn/benchmarks.md",
+      route: "/zh-cn/benchmarks/",
+    },
+  }),
+  bilingualDocument({
     id: "evaluation-matrix",
     sectionId: "governance",
     order: 40,
@@ -617,6 +656,22 @@ const documents = [
     chinese: {
       source: "zh-cn/operations/evaluation-matrix.md",
       route: "/zh-cn/operations/evaluation-matrix/",
+    },
+  }),
+  bilingualDocument({
+    id: "standards-and-references",
+    sectionId: "governance",
+    order: 45,
+    sidebarSlug: "standards-and-references",
+    label: "Standards and references",
+    translation: "规范与引用",
+    english: {
+      source: "standards-and-references.md",
+      route: "/standards-and-references/",
+    },
+    chinese: {
+      source: "zh-cn/standards-and-references.md",
+      route: "/zh-cn/standards-and-references/",
     },
   }),
   bilingualDocument({

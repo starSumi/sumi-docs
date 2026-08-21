@@ -63,6 +63,29 @@ The optional `$sumi-docs-maintain` Skill is only a maintenance router. It helps
 an agent decide which package and validation gates own a repository change. It
 is not a protocol dependency and does not write documentation through MCP.
 
+## Natural-language requests
+
+Natural-language interaction belongs to the agent host. A host can translate a
+request such as "How do I configure a remote corpus?" into a bounded sequence:
+
+1. call `list_docs` when the corpus identity is unknown;
+2. call `search_docs` with the user's terms;
+3. call `fetch_doc` for the selected source and preserve its path as the
+   citation; and
+4. call `get_openapi_spec` only when the request concerns the published API.
+
+The host then writes the answer and cites the returned document path or public
+URL. Sumi-Docs-MCP does not parse prompts, choose a model, store conversation
+history, or require an API key. A future Codex-like integration can add an
+agent or provider adapter around the same MCP contract without changing the
+server or the reviewed corpus.
+
+The retrieval step is retrieval-augmented generation when a model uses the
+returned passages as context. The current implementation is deterministic
+lexical retrieval, not an embedding or vector database. Fine-tuning is neither
+required nor a mechanism for keeping documentation current; update the corpus,
+rebuild or restart the process, and let the host retrieve the new revision.
+
 ## Defaults and navigation
 
 With no CLI source, `sumi-docs.config.json` selects root `docs/`. Without that

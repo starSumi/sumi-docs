@@ -1,0 +1,33 @@
+---
+const isChinese = Astro.currentLocale?.toLowerCase() === "zh-cn";
+const heading = isChinese ? "API 语言" : "API language";
+const message = isChinese
+  ? "API 参考目前以英文为规范源；类型签名和示例直接对应已审阅的源码。"
+  : "The API reference is currently canonical in English; signatures and examples follow the reviewed source.";
+---
+
+<aside class="api-language-notice" aria-labelledby="api-language-heading">
+  <strong id="api-language-heading">{heading}</strong>
+  <span>{message}</span>
+</aside>
+
+<style>
+  @layer starlight.core {
+    .api-language-notice {
+      display: grid;
+      gap: 0.25rem;
+      max-width: 44rem;
+      margin-block: 1rem;
+      padding: 0.75rem 1rem;
+      border-inline-start: 3px solid var(--sl-color-accent);
+      background: var(--sl-color-accent-low);
+      color: var(--sl-color-accent-high);
+      font-size: var(--sl-text-body-sm);
+      line-height: var(--sl-line-height-headings);
+    }
+
+    strong {
+      color: currentColor;
+    }
+  }
+</style>
