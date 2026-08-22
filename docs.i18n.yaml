@@ -3,8 +3,8 @@ docs/index.mdx: 6978a9e94923343554c66269daab148814c7e295
 docs/zh-cn/index.mdx: a76d979ce42207f59380887c7197e4b75cdb70d0
 docs/getting-started.md: 4860036c139500fe0091e6add4de09a0d7625fe1
 docs/zh-cn/getting-started.md: 00dacd3388444bf1619f381641f412a37f77c4ec
-docs/configuration.md: 1ed87bb693a9f33f3450ed1657993e7ad3706f96
-docs/zh-cn/configuration.md: c59c8071d061bed3430aae80e2f21681eae842a6
+docs/configuration.md: e2f378b66ac72bd492836e519a68f07151576d05
+docs/zh-cn/configuration.md: 3c2169fb29c7ef5af061d38fabce38ad10c20d1e
 docs/tool-reference.md: 7b491714d1e10aa7740a83c45af09af5f0b9d600
 docs/zh-cn/tool-reference.md: 1bf2b982fbf5fe840bb0f20589de2d153c31abed
 docs/agent-hosts.md: 73d2457a8a4f0d2a804ab276d1cdef80b5cf290d

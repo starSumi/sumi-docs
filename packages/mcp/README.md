@@ -53,7 +53,9 @@ The config is strict JSON. Unknown fields and paths escaping the project root
 are rejected. Use `--config <path>` to select a different file explicitly.
 
 The process uses stdout for JSON-RPC. Diagnostics go to stderr. It is normal for
-the process to wait silently until a client sends a request.
+the process to wait silently until a client sends a request. `--verbose` adds
+sanitized, one-line lifecycle events to stderr without exposing source paths or
+URLs.
 
 For client configuration, start from
 [`examples/clients/launcher-template.json`](examples/clients/launcher-template.json),

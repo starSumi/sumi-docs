@@ -10,6 +10,37 @@ import {
 } from "./utils/remote-source-url.js";
 import { VERSION } from "./version.js";
 
+type LifecycleDiagnostic =
+  | {
+      event: "sumi_docs_mcp.starting";
+      transport: "stdio" | "streamable-http";
+      version: string;
+      sourceKind: "local-directory" | "local-v2" | "remote";
+      sourceOrigin: "cli" | "config" | "default";
+      sourceFormat: "directory" | "manifest-v1" | "manifest-v2";
+    }
+  | {
+      event: "sumi_docs_mcp.ready";
+      transport: "stdio";
+      version: string;
+    }
+  | {
+      event: "sumi_docs_mcp.corpus_loaded";
+      transport: "stdio" | "streamable-http";
+      sourceKind: "local-directory" | "local-v2" | "remote";
+      documentCount: number;
+      openApiLoaded: boolean;
+      corpusRevision: string | null;
+    };
+
+function writeLifecycleDiagnostic(
+  enabled: boolean | undefined,
+  diagnostic: LifecycleDiagnostic,
+): void {
+  if (!enabled) return;
+  process.stderr.write(`${JSON.stringify(diagnostic)}\n`);
+}
+
 function printHelp(): void {
   console.log(`Sumi-Docs-MCP ${VERSION} - Read-only MCP server for documentation
 
@@ -377,6 +408,15 @@ export async function run(argv: string[]): Promise<void> {
   const options = await resolveCliOptions(parsedOptions);
   const { DocsMcpServer } = await import("./mcp/server.js");
 
+  writeLifecycleDiagnostic(options.verbose, {
+    event: "sumi_docs_mcp.starting",
+    transport: options.transport,
+    version: VERSION,
+    sourceKind: options.sourceKind,
+    sourceOrigin: options.sourceOrigin,
+    sourceFormat: options.sourceFormat,
+  });
+
   let vaultReady: Promise<import("./vfs/DocsVault.js").DocsVault> | undefined;
   const loadVault = (): Promise<import("./vfs/DocsVault.js").DocsVault> =>
     (vaultReady ??= (async () => {
@@ -390,6 +430,15 @@ export async function run(argv: string[]): Promise<void> {
         await vault.loadFromDirectory(options.docsSource);
         if (options.openApiPath) await vault.loadOpenApi(options.openApiPath);
       }
+      const stats = vault.getStats();
+      writeLifecycleDiagnostic(options.verbose, {
+        event: "sumi_docs_mcp.corpus_loaded",
+        transport: options.transport,
+        sourceKind: options.sourceKind,
+        documentCount: stats.documentCount,
+        openApiLoaded: stats.hasOpenApiSpec,
+        corpusRevision: stats.corpusRevision ?? null,
+      });
       return vault;
     })());
 
@@ -398,6 +447,11 @@ export async function run(argv: string[]): Promise<void> {
   if (options.transport === "stdio") {
     const { serveStdio } = await import("@modelcontextprotocol/server/stdio");
     serveStdio(serverFactory, { legacy: "reject" });
+    writeLifecycleDiagnostic(options.verbose, {
+      event: "sumi_docs_mcp.ready",
+      transport: "stdio",
+      version: VERSION,
+    });
     return;
   }
 

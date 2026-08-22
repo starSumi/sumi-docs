@@ -5,6 +5,8 @@ This file records user-visible changes. Internal phase notes are retained under
 
 ## Unreleased
 
+- Made `--verbose` emit sanitized lifecycle diagnostics on stderr and hardened
+  the process smoke check against non-JSON-RPC stdout output.
 - Added reviewed release-intent and version-pull-request automation while
   keeping publication bound to accepted package tarballs.
 - Added stateless Streamable HTTP to the Node.js distribution while preserving
