@@ -201,7 +201,7 @@ export function validateWorkflowPolicy({
     (step) => step.name === "Read verified Dependabot metadata",
   );
   const dependabotMerge = dependabotSteps.find(
-    (step) => step.name === "Enable squash auto-merge for patch updates",
+    (step) => step.name === "Enable rebase auto-merge for patch updates",
   );
   const dependabotJobCondition = String(dependabotJob?.if ?? "");
   const dependabotMergeCondition = String(dependabotMerge?.if ?? "");
@@ -243,7 +243,7 @@ export function validateWorkflowPolicy({
     dependabotMerge.env.GH_TOKEN !== "${{ secrets.GITHUB_TOKEN }}" ||
     dependabotMerge.env.PR_URL !==
       "${{ github.event.pull_request.html_url }}" ||
-    dependabotMerge.run !== 'gh pr merge --auto --squash "$PR_URL"' ||
+    dependabotMerge.run !== 'gh pr merge --auto --rebase "$PR_URL"' ||
     dependabotSteps.some((step) =>
       step.uses?.startsWith("actions/checkout@"),
     ) ||
@@ -254,7 +254,7 @@ export function validateWorkflowPolicy({
     )
   ) {
     errors.push(
-      "Dependabot automation may only enable squash auto-merge for verified patch updates without checking out pull-request code.",
+      "Dependabot automation may only enable rebase auto-merge for verified patch updates without checking out pull-request code.",
     );
   }
 

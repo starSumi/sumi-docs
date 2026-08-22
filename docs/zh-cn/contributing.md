@@ -54,8 +54,7 @@ pnpm run verify:integration
 任何失败或跳过的门禁都必须明确报告。
 
 只有在必需检查通过、文档与 changelog 已更新、评审讨论已解决后，才能把 pull request
-标记为 Ready。GitHub 已禁用 merge commit；维护者根据提交序列是否有独立评审价值选择
-squash 或 rebase merge。
+标记为 Ready。仓库变更使用 rebase merge，以保留已验证的作者身份和线性提交历史。
 
 进一步阅读[开发](../development/)、[发布](../releasing/)和
 [Skills、MCP 与编排](../skills-and-orchestration/)。

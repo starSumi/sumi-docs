@@ -1,6 +1,27 @@
 import { pathToFileURL } from "node:url";
 
 export const REQUIRED_PNPM_VERSION = "10.26.0";
+export const REQUIRED_NODE_VERSION = "25.5.0";
+
+function parseStableVersion(version) {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)$/u.exec(version ?? "");
+  return match?.slice(1).map(Number);
+}
+
+export function validateNodeVersion(version) {
+  const current = parseStableVersion(version);
+  const required = parseStableVersion(REQUIRED_NODE_VERSION);
+  if (!current || !required) {
+    return `Use a stable Node.js ${REQUIRED_NODE_VERSION} or newer runtime.`;
+  }
+  for (let index = 0; index < required.length; index += 1) {
+    if (current[index] > required[index]) return undefined;
+    if (current[index] < required[index]) {
+      return `Expected Node.js ${REQUIRED_NODE_VERSION} or newer, received ${version}.`;
+    }
+  }
+  return undefined;
+}
 
 export function validatePackageManager(userAgent) {
   const match = /^pnpm\/([^\s]+)(?:\s|$)/u.exec(userAgent ?? "");
@@ -14,7 +35,9 @@ export function validatePackageManager(userAgent) {
 }
 
 function main() {
-  const error = validatePackageManager(process.env.npm_config_user_agent);
+  const error =
+    validateNodeVersion(process.version) ??
+    validatePackageManager(process.env.npm_config_user_agent);
   if (error) throw new Error(error);
 }
 
