@@ -462,6 +462,25 @@ test("the install lifecycle requires the pinned pnpm version", () => {
     assert.deepEqual(workspacePackage.volta, {
       extends: "../../package.json",
     });
+    assert.equal(
+      workspacePackage.packageManager,
+      undefined,
+      `${workspacePackagePath} must inherit the root package manager`,
+    );
+  }
+
+  for (const foreignLockfile of [
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "yarn.lock",
+    "bun.lock",
+    "bun.lockb",
+  ]) {
+    assert.equal(
+      existsSync(foreignLockfile),
+      false,
+      `${foreignLockfile} conflicts with the root pnpm lockfile`,
+    );
   }
 
   const packageFiles = [
@@ -477,6 +496,11 @@ test("the install lifecycle requires the pinned pnpm version", () => {
         command,
         /(?:^|&&|\|\|)\s*pnpm(?:\s+run)?\b/u,
         `${packageFile} script ${name} recursively invokes pnpm`,
+      );
+      assert.doesNotMatch(
+        command,
+        /(?:^|&&|\|\|)\s*(?:npm|npx|yarn|bunx?)\b/u,
+        `${packageFile} script ${name} invokes a non-pnpm package manager`,
       );
     }
   }
