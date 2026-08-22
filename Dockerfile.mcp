@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:25.5.0-bookworm-slim AS build
+FROM node:26.7.0-bookworm-slim AS build
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
@@ -32,7 +32,7 @@ RUN pnpm --filter @sumi-os/corpus-contract build \
       --legacy \
       /opt/sumi-docs
 
-FROM node:25.5.0-bookworm-slim AS runtime-base
+FROM node:26.7.0-bookworm-slim AS runtime-base
 
 ARG VCS_REF=""
 
