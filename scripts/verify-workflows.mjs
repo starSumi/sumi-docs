@@ -156,9 +156,10 @@ export function validateWorkflowPolicy({
     )
     .join("\n");
   if (
-    !sameKeys(releaseIntent.on, ["push"]) ||
+    !sameKeys(releaseIntent.on, ["push", "workflow_dispatch"]) ||
     JSON.stringify(releaseIntent.on?.push?.branches) !==
       JSON.stringify(["main"]) ||
+    !sameKeys(releaseIntent.on?.workflow_dispatch, []) ||
     !sameKeys(releaseIntent.permissions, ["contents", "pull-requests"]) ||
     releaseIntent.permissions.contents !== "write" ||
     releaseIntent.permissions["pull-requests"] !== "write" ||
