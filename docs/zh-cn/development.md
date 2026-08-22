@@ -34,9 +34,13 @@ Dependabot 按错开的每周计划检查 pnpm workspace、Rust native probe、�
 major 更新保持独立并交由维护者评审。
 
 每个依赖 PR 都会运行完整 CI 矩阵和 GitHub dependency review。patch 更新可以进入
-squash auto-merge，但只有 commit policy、Linux 与 Windows 验证、容器验收和依赖审查
+rebase auto-merge，但只有 commit policy、Linux 与 Windows 验证、容器验收和依赖审查
 全部通过后，分支规则才允许合并。GitHub Actions 更新不参与自动合并，避免 workflow
 自行批准其执行依赖的变更。minor 和 major 更新始终需要维护者决策。
+
+workspace 的 `preinstall` 门会在开发者安装时强制使用 Node.js 25.5.0 或更高版本以及固定的
+pnpm 版本。包管理器的 engine strict 保持关闭，使托管依赖服务能够只解析 lockfile；构建、
+测试、打包和发布门仍在要求的 Node runtime 上运行。
 
 只有经过审核的 Markdown 和 MDX 才能进入站点构建。不要加入模型凭据、私有文档、
 认证抓取或浏览器端 stdio；这些能力需要单独评审的服务端边界。

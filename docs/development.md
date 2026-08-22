@@ -38,11 +38,16 @@ Cargo minor or patch updates are grouped; major updates remain separate for
 review.
 
 Every dependency pull request runs the complete CI matrix and GitHub dependency
-review. Patch updates may be marked for squash auto-merge, but branch rules keep
+review. Patch updates may be marked for rebase auto-merge, but branch rules keep
 them pending until commit policy, Linux and Windows verification, container
 acceptance, and dependency review all pass. GitHub Actions updates are excluded
 from auto-merge so a workflow cannot approve a change to its own execution
 dependencies. Minor and major updates always require a maintainer decision.
+
+The workspace `preinstall` gate enforces Node.js 25.5.0 or newer and the pinned
+pnpm version for developer installs. Package-manager engine strictness remains
+disabled so hosted dependency services can perform lockfile-only resolution;
+build, test, package, and release gates still run on the required Node runtime.
 
 Only reviewed Markdown and MDX may enter the site build. Do not add model
 credentials, private documents, authenticated fetching, or browser-side stdio.

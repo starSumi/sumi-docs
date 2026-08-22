@@ -29,11 +29,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable squash auto-merge for patch updates
+      - name: Enable rebase auto-merge for patch updates
         if: >-
           steps.metadata.outputs.update-type == 'version-update:semver-patch' &&
           !contains(github.event.pull_request.labels.*.name, 'github_actions')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --auto --squash "$PR_URL"
+        run: gh pr merge --auto --rebase "$PR_URL"

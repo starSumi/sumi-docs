@@ -64,9 +64,9 @@ tools against the built remote corpus and verifies every returned human page
 URL. Report any failed or skipped gate explicitly.
 
 Mark a pull request ready only when the required checks pass, the documentation
-and changelog are current, and review threads are resolved. GitHub merge commits
-are disabled; maintainers choose squash or rebase merge according to whether an
-intentional commit sequence adds review value.
+and changelog are current, and review threads are resolved. Repository changes
+use rebase merge so verified authorship and the linear commit history are
+preserved.
 
 Read [Development](../development/), [Releasing](../releasing/), and
 [Skills, MCP, and orchestration](../skills-and-orchestration/) for the boundaries

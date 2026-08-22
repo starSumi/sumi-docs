@@ -34,7 +34,9 @@ import {
   noticeSection,
 } from "../scripts/build-compliance-artifacts.mjs";
 import {
+  REQUIRED_NODE_VERSION,
   REQUIRED_PNPM_VERSION,
+  validateNodeVersion,
   validatePackageManager,
 } from "../scripts/enforce-package-manager.mjs";
 import {
@@ -426,8 +428,12 @@ test("lockfile policy rejects mirrors, weak integrity, and external links", () =
 
 test("the install lifecycle requires the pinned pnpm version", () => {
   const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
+  const npmrc = readFileSync(".npmrc", "utf8");
   assert.equal(rootPackage.packageManager, `pnpm@${REQUIRED_PNPM_VERSION}`);
+  assert.equal(rootPackage.engines.node, `>=${REQUIRED_NODE_VERSION}`);
   assert.equal(rootPackage.engines.pnpm, REQUIRED_PNPM_VERSION);
+  assert.match(npmrc, /^engine-strict=false$/mu);
+  assert.doesNotMatch(npmrc, /^engine-strict=true$/mu);
   assert.equal(
     rootPackage.scripts.preinstall,
     "node scripts/enforce-package-manager.mjs",
@@ -440,6 +446,10 @@ test("the install lifecycle requires the pinned pnpm version", () => {
   );
   assert.match(validatePackageManager("npm/11.15.0 node/v25.5.0"), /Use pnpm/u);
   assert.match(validatePackageManager("pnpm/10.25.0 npm/?"), /Expected pnpm/u);
+  assert.equal(validateNodeVersion("v25.5.0"), undefined);
+  assert.equal(validateNodeVersion("v26.0.0"), undefined);
+  assert.match(validateNodeVersion("v25.4.9"), /Expected Node\.js/u);
+  assert.match(validateNodeVersion("v25.5.0-rc.1"), /stable Node\.js/u);
 
   for (const workspacePackagePath of [
     "apps/web/package.json",
@@ -1072,12 +1082,12 @@ test("Dependabot auto-merge remains patch-only and does not execute PR code", ()
 
   const broadened = structuredClone(valid);
   broadened.dependabotPolicy.jobs["patch-automerge"].steps.find(
-    (step) => step.name === "Enable squash auto-merge for patch updates",
+    (step) => step.name === "Enable rebase auto-merge for patch updates",
   ).if = "${{ always() }}";
   assert.ok(
     validateWorkflowPolicy(broadened).some((error) =>
       error.includes(
-        "only enable squash auto-merge for verified patch updates",
+        "only enable rebase auto-merge for verified patch updates",
       ),
     ),
   );
