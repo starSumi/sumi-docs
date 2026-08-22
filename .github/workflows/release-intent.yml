@@ -1,0 +1,47 @@
+name: Release intent
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-intent-main
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Maintain package version pull request
+    if: ${{ github.repository == 'starSumi/sumi-docs' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out complete history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Install the pinned package manager
+        run: |
+          npm install --global --ignore-scripts --registry https://registry.npmjs.org pnpm@10.26.0
+          pnpm --version
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Maintain version pull request
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        with:
+          version: pnpm run release:version
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+          github-token: ${{ secrets.GITHUB_TOKEN }}

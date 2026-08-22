@@ -18,13 +18,15 @@ description: 定义 Sumi 文档兼容边界的外部规范。
 
 ## Web、语言与运维
 
-| 领域             | 权威来源                                                                                                                                  | 在 Sumi 文档中的用途                                             |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| 浏览器无障碍     | [WCAG 2.2](https://www.w3.org/TR/WCAG22/)                                                                                                 | 规定面向人的文档站点的无障碍目标。                               |
-| TypeScript 语言  | [TypeScript 文档](https://www.typescriptlang.org/docs/)                                                                                   | 说明 Node workspace 和生成的 TypeDoc 参考使用的语言。            |
-| Rust parity 线路 | [Rust Reference](https://doc.rust-lang.org/reference/)                                                                                    | 只适用于未来受支持的原生实现，不改变当前 Node 契约。             |
-| 运行时遥测       | [OpenTelemetry 规范](https://opentelemetry.io/docs/specs/otel/) 与 [语义约定](https://opentelemetry.io/docs/specs/semconv/)               | 为可选的宿主或服务遥测提供词汇，不向只读 MCP 核心加入 exporter。 |
-| 工作流安全       | [GitHub Actions security hardening](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-for-github-actions) | 指导最小权限 workflow 和发布证据处理。                           |
+| 领域             | 权威来源                                                                                                                                                     | 在 Sumi 文档中的用途                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| 浏览器无障碍     | [WCAG 2.2](https://www.w3.org/TR/WCAG22/)                                                                                                                    | 规定面向人的文档站点的无障碍目标。                               |
+| TypeScript 语言  | [TypeScript 文档](https://www.typescriptlang.org/docs/)                                                                                                      | 说明 Node workspace 和生成的 TypeDoc 参考使用的语言。            |
+| Rust parity 线路 | [Rust Reference](https://doc.rust-lang.org/reference/)                                                                                                       | 只适用于未来受支持的原生实现，不改变当前 Node 契约。             |
+| 运行时遥测       | [OpenTelemetry 规范](https://opentelemetry.io/docs/specs/otel/) 与 [语义约定](https://opentelemetry.io/docs/specs/semconv/)                                  | 为可选的宿主或服务遥测提供词汇，不向只读 MCP 核心加入 exporter。 |
+| 工作流安全       | [GitHub Actions security hardening](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-for-github-actions)                    | 指导最小权限 workflow 和发布证据处理。                           |
+| 依赖更新         | [Dependabot configuration](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file) | 定义生态发现、计划、分组与 PR 行为。                             |
+| 依赖审查         | [GitHub dependency review](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review)  | 定义用于拒绝新引入漏洞依赖的 PR 差异审查。                       |
 
 ## 如何应用引用
 

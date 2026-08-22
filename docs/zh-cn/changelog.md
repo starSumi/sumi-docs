@@ -7,10 +7,12 @@ description: Sumi 文档 Web 投影的用户可见演进记录。
 为准：
 
 - [Web changelog](https://github.com/starSumi/sumi-docs/blob/main/apps/web/CHANGELOG.md)
+- [Corpus contract changelog](https://github.com/starSumi/sumi-docs/blob/main/packages/corpus-contract/CHANGELOG.md)
 - [MCP changelog](https://github.com/starSumi/sumi-docs/blob/main/packages/mcp/CHANGELOG.md)
 
 ## Unreleased
 
+- 增加可评审的包发布意图和自动版本 Pull Request，但不授予包发布或创建标签的权限。
 - 用一份经过审阅的 content catalog 统一侧栏和发布映射。
 - 在保留 manifest v1 的同时，增加包含 locale、route、digest、导航和来源溯源信息的
   immutable manifest v2 投影。

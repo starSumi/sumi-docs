@@ -6,6 +6,21 @@ description: 构建、验收、提升和回滚不可变的站点候选产物。
 公开源代码和发布产品是两个不同事件。代码提交可以公开，但 npm 包、已部署站点、
 Git 标签或 GitHub Release 仍然可以不存在。
 
+## 发布意图与包版本
+
+当前已经写入版本号的 0.1.0 包使用下文所述的首次发布 bootstrap。在该基线进入 registry
+之前，不要仅为发布工具改动制造 0.1.1 版本。
+
+0.1.0 bootstrap 完成后，如果 Pull Request 改变了 `@sumi-os/corpus-contract` 或
+`@sumi-os/docs-mcp` 的已发布行为，就运行 `pnpm changeset`，记录受影响的包、semver
+影响和客观的发布说明。两个包独立版本化；只有 contract 改动同时改变 MCP 行为或兼容性
+时才选择两者。只改文档、测试、仓库工具或私有 Web 应用时，不需要空 changeset。
+
+发布意图合入 `main` 后，`Release intent` 工作流只维护一个经过评审的版本 Pull Request。
+它可以更新公开包版本、内部依赖元数据和包级 changelog，但不会发布包、创建标签、构建
+候选产物或进入受保护的发布 environment。版本 Pull Request 合并后，必须从该精确提交
+构建并验收不可变候选产物，之后才能提升任何包。
+
 使用明确的公开源地址构建生产候选：
 
 ```powershell
@@ -56,3 +71,6 @@ image digest 和 image ID。
 启用双因素认证，先发布已验收的精确 corpus-contract tarball，再发布已验收的精确 MCP
 tarball。后续版本使用受保护的 npm trusted publisher、staged publishing 和人工批准。
 两条路径都不得重新构建已验收的 tarball，也不得使用未经评审的长期 registry 写入 token。
+
+两条路径都不使用 `changeset publish`。publisher 只能消费已验收的 tarball，并核对其
+提交和校验和；不得从版本 Pull Request 重新构建。

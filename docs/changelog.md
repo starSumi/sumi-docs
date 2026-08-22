@@ -8,10 +8,13 @@ evolution. The package-level release records remain authoritative for exact
 file-level changes:
 
 - [Web changelog](https://github.com/starSumi/sumi-docs/blob/main/apps/web/CHANGELOG.md)
+- [Corpus contract changelog](https://github.com/starSumi/sumi-docs/blob/main/packages/corpus-contract/CHANGELOG.md)
 - [MCP changelog](https://github.com/starSumi/sumi-docs/blob/main/packages/mcp/CHANGELOG.md)
 
 ## Unreleased
 
+- Added reviewable package release intent and automated version pull requests
+  without granting package publication or tag authority.
 - Replaced separate sidebar and publication mappings with one reviewed content
   catalog.
 - Added a parallel immutable manifest v2 projection with locale, route, digest,

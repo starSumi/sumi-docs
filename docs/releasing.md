@@ -6,6 +6,26 @@ description: Build, review, promote, and roll back an immutable site candidate.
 Source publication and a product release are separate events. A commit may be
 public while no npm registry package, deployed site, tag, or GitHub Release exists.
 
+## Release intent and package versions
+
+The already versioned 0.1.0 packages use the separate first-publication bootstrap
+described below. Do not create a 0.1.1 bump solely for release-tooling changes
+made before that baseline exists in the registry.
+
+After the 0.1.0 bootstrap, a pull request that changes the published behavior of
+`@sumi-os/corpus-contract` or `@sumi-os/docs-mcp` runs `pnpm changeset` and records
+the affected package, semver impact, and factual release note. The packages have
+independent versions; select both only when a contract change also changes MCP
+behavior or compatibility. Documentation-only, test-only, repository-tooling,
+and private Web changes do not require an empty changeset.
+
+When release intent reaches `main`, the `Release intent` workflow maintains one
+reviewed version pull request. It may update public package versions, internal
+dependency metadata, and package changelogs. It does not publish packages, create
+tags, build candidates, or enter a protected release environment. After that
+version pull request merges, build and accept an immutable candidate from its
+exact commit before any package promotion.
+
 Build a production candidate with an explicit public origin:
 
 ```powershell
@@ -72,3 +92,7 @@ exact accepted corpus-contract tarball before the exact accepted MCP tarball.
 Subsequent releases use a protected npm trusted publisher with staged publishing
 and human approval. Neither path may rebuild the accepted tarballs or use an
 unreviewed long-lived registry write token.
+
+`changeset publish` is not part of either path. A publisher must consume the
+accepted tarballs and verify their commit and checksums; it must not rebuild them
+from the version pull request.

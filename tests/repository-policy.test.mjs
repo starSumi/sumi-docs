@@ -138,6 +138,10 @@ test("npm publication is limited to the reviewed contract and MCP packages", () 
     root.scripts["pack:npm-candidate"],
     "node scripts/build-npm-candidate.mjs",
   );
+  assert.equal(
+    root.scripts["pack:mcp"],
+    "node scripts/run-workspace-script.mjs packages/corpus-contract build && node scripts/run-pnpm-command.mjs --dir packages/mcp pack --dry-run",
+  );
 
   const npmrc = readFileSync(".npmrc", "utf8");
   assert.doesNotMatch(npmrc, /^lockfile=/mu);
@@ -160,6 +164,37 @@ test("npm publication is limited to the reviewed contract and MCP packages", () 
     }),
     { PATH: "kept" },
   );
+});
+
+test("release intent is versioned without granting publication authority", () => {
+  const root = JSON.parse(readFileSync("package.json", "utf8"));
+  const config = JSON.parse(readFileSync(".changeset/config.json", "utf8"));
+  const contract = JSON.parse(
+    readFileSync("packages/corpus-contract/package.json", "utf8"),
+  );
+
+  assert.equal(root.devDependencies["@changesets/cli"], "2.31.1");
+  assert.equal(root.scripts.changeset, "changeset");
+  assert.equal(root.scripts["release:status"], "changeset status");
+  assert.equal(root.scripts["release:version"], "changeset version");
+  assert.equal(root.scripts["release:publish"], undefined);
+  assert.equal(
+    Object.values(root.scripts).some((script) =>
+      /(?:changeset|npm|pnpm)\s+publish\b/u.test(script),
+    ),
+    false,
+  );
+
+  assert.deepEqual(config.fixed, []);
+  assert.deepEqual(config.linked, []);
+  assert.equal(config.access, "public");
+  assert.equal(config.baseBranch, "main");
+  assert.equal(config.updateInternalDependencies, "patch");
+  assert.equal(config.bumpVersionsWithWorkspaceProtocolOnly, true);
+  assert.deepEqual(config.privatePackages, { version: false, tag: false });
+  assert.deepEqual(config.ignore, []);
+  assert.ok(contract.files.includes("CHANGELOG.md"));
+  assert.equal(existsSync("packages/corpus-contract/CHANGELOG.md"), true);
 });
 
 test("the native development checkpoint is pinned and required by CI", () => {
@@ -880,6 +915,45 @@ test("duplicate-code growth is bounded by one root policy", () => {
   assert.equal("exitCode" in config, false);
 });
 
+test("Dependabot covers every maintained dependency ecosystem", () => {
+  const config = parse(readFileSync(".github/dependabot.yml", "utf8"));
+  const updates = new Map(
+    config.updates.map((update) => [update["package-ecosystem"], update]),
+  );
+
+  assert.equal(config.version, 2);
+  assert.deepEqual(
+    [...updates.keys()],
+    ["npm", "cargo", "docker", "github-actions"],
+  );
+  assert.equal(updates.get("npm").directory, "/");
+  assert.equal(updates.get("cargo").directory, "/packages/mcp/native");
+  assert.equal(updates.get("docker").directory, "/");
+  assert.equal(updates.get("github-actions").directory, "/");
+
+  for (const update of updates.values()) {
+    assert.equal(update.schedule.interval, "weekly");
+    assert.equal(update.schedule.time, "03:00");
+    assert.equal(update.schedule.timezone, "Asia/Shanghai");
+    assert.equal(update["rebase-strategy"], "auto");
+    assert.ok(update.labels.includes("dependencies"));
+  }
+
+  assert.deepEqual(
+    updates.get("npm").groups["npm-development"]["update-types"],
+    ["minor", "patch"],
+  );
+  assert.deepEqual(
+    updates.get("npm").groups["npm-production"]["update-types"],
+    ["minor", "patch"],
+  );
+  assert.deepEqual(
+    updates.get("cargo").groups["cargo-compatible"]["update-types"],
+    ["minor", "patch"],
+  );
+  assert.ok(updates.get("github-actions").labels.includes("github_actions"));
+});
+
 test("active workflows enforce privilege and supersession boundaries", () => {
   const input = loadWorkflowPolicyInput();
   assert.deepEqual(validateWorkflowPolicy(input), []);
@@ -954,6 +1028,69 @@ test("active workflows enforce privilege and supersession boundaries", () => {
     ),
   );
   assert.ok(errors.some((error) => error.includes("Pages promotion")));
+});
+
+test("release intent cannot acquire package publication authority", () => {
+  const valid = loadWorkflowPolicyInput();
+  assert.deepEqual(validateWorkflowPolicy(valid), []);
+
+  const withPublish = structuredClone(valid);
+  withPublish.releaseIntent.jobs.version.steps.find(
+    (step) => step.name === "Maintain version pull request",
+  ).with["publish-script"] = "pnpm changeset publish";
+  assert.ok(
+    validateWorkflowPolicy(withPublish).some((error) =>
+      error.includes("must not publish, tag, or rebuild artifacts"),
+    ),
+  );
+
+  const withTag = structuredClone(valid);
+  withTag.releaseIntent.jobs.version.steps.push({ run: "git tag v1.0.0" });
+  assert.ok(
+    validateWorkflowPolicy(withTag).some((error) =>
+      error.includes("must not publish, tag, or rebuild artifacts"),
+    ),
+  );
+
+  const withWrongMajorInputs = structuredClone(valid);
+  const wrongMajorStep =
+    withWrongMajorInputs.releaseIntent.jobs.version.steps.find(
+      (step) => step.name === "Maintain version pull request",
+    );
+  delete wrongMajorStep.with.version;
+  wrongMajorStep.with["version-script"] = "pnpm run release:version";
+  assert.ok(
+    validateWorkflowPolicy(withWrongMajorInputs).some((error) =>
+      error.includes("must not publish, tag, or rebuild artifacts"),
+    ),
+  );
+});
+
+test("Dependabot auto-merge remains patch-only and does not execute PR code", () => {
+  const valid = loadWorkflowPolicyInput();
+  assert.deepEqual(validateWorkflowPolicy(valid), []);
+
+  const broadened = structuredClone(valid);
+  broadened.dependabotPolicy.jobs["patch-automerge"].steps.find(
+    (step) => step.name === "Enable squash auto-merge for patch updates",
+  ).if = "${{ always() }}";
+  assert.ok(
+    validateWorkflowPolicy(broadened).some((error) =>
+      error.includes(
+        "only enable squash auto-merge for verified patch updates",
+      ),
+    ),
+  );
+
+  const checkout = structuredClone(valid);
+  checkout.dependabotPolicy.jobs["patch-automerge"].steps.unshift({
+    uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+  });
+  assert.ok(
+    validateWorkflowPolicy(checkout).some((error) =>
+      error.includes("without checking out pull-request code"),
+    ),
+  );
 });
 
 test("nested workflow discovery ignores generated trees", (t) => {
