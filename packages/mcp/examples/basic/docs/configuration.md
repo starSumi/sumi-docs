@@ -28,6 +28,19 @@ sumi-docs-mcp doctor [docs-source] [--config <path>] [--json] [--show-paths]
 | `doctor --json`           | no       | emits a machine-readable read-only diagnostic report      |
 | `--show-paths`            | no       | doctor-only opt-in for resolved local paths               |
 
+## Runtime diagnostics
+
+`serve` reserves stdout for JSON-RPC. Runtime failures and optional lifecycle
+diagnostics use stderr. With `--verbose`, the server emits one-line JSON events
+for `sumi_docs_mcp.starting`, `sumi_docs_mcp.ready`, and, after a successful
+snapshot load, `sumi_docs_mcp.corpus_loaded`.
+
+Lifecycle events contain only the transport, package version, source
+classification, and bounded corpus metadata such as document count and corpus
+revision. They do not include the source path, source URL, credentials, or a
+stack trace. Error diagnostics remain on stderr whether or not verbose mode is
+enabled.
+
 ## Project discovery
 
 The documentation source is resolved in this order:

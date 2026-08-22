@@ -39,6 +39,17 @@ HTTP 参数包括 `--http-host`、`--http-port`、`--http-path`、可重复的
 revision 为 `null`。v2 部署可以通过 `SUMI_DOCS_EXPECTED_CORPUS_REVISION` 指定完整的
 `sha256:` revision；缺失或不匹配时进程会在 listener 就绪前失败。
 
+## 运行时诊断
+
+`serve` 的 stdout 只承载 JSON-RPC。运行时错误和可选生命周期诊断写入 stderr。启用
+`--verbose` 后，服务会以单行 JSON 输出 `sumi_docs_mcp.starting`、
+`sumi_docs_mcp.ready`，并在只读快照加载成功后输出
+`sumi_docs_mcp.corpus_loaded`。
+
+生命周期事件只包含 transport、package version、source 分类以及文档数量、corpus
+revision 等受限语料元数据，不包含 source 路径、source URL、凭据或调用栈。无论是否启用
+verbose，错误诊断都保留在 stderr。
+
 构建 Web workspace 后，可以不启动 HTTP source server，直接从磁盘读取同一份密封投影：
 
 ```powershell

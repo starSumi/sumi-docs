@@ -76,27 +76,42 @@ const stderr = [];
 child.stderr.on("data", (chunk) => stderr.push(chunk.toString()));
 
 const completed = new Promise((resolveRun, rejectRun) => {
-  const timeout = setTimeout(() => {
+  let settled = false;
+  let stopping = false;
+  let killTimer;
+  const fail = (error) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeout);
+    clearTimeout(killTimer);
     child.kill();
-    rejectRun(
+    rejectRun(error);
+  };
+  const timeout = setTimeout(() => {
+    fail(
       new Error(
         `Timed out waiting for MCP responses. stderr: ${stderr.join("")}`,
       ),
     );
   }, 5_000);
   child.once("error", (error) => {
-    clearTimeout(timeout);
-    rejectRun(error);
+    fail(error);
   });
   child.once("close", (code) => {
+    if (settled) return;
     if (responses.size < requests.length) {
-      clearTimeout(timeout);
-      rejectRun(
+      fail(
         new Error(
           `Server exited with code ${code}. stderr: ${stderr.join("")}`,
         ),
       );
+      return;
     }
+    settled = true;
+    clearTimeout(timeout);
+    clearTimeout(killTimer);
+    output.close();
+    resolveRun();
   });
 
   const output = createInterface({ input: child.stdout });
@@ -105,15 +120,20 @@ const completed = new Promise((resolveRun, rejectRun) => {
     try {
       message = JSON.parse(line);
     } catch {
+      fail(new Error(`Non-JSON output on MCP stdout: ${JSON.stringify(line)}`));
+      return;
+    }
+    if (message?.jsonrpc !== "2.0") {
+      fail(new Error(`Non-JSON-RPC output on MCP stdout: ${line}`));
       return;
     }
     if (typeof message.id !== "number") return;
     responses.set(message.id, message);
-    if (responses.size === requests.length) {
+    if (responses.size === requests.length && !stopping) {
+      stopping = true;
       clearTimeout(timeout);
-      output.close();
-      child.kill();
-      resolveRun();
+      child.stdin.end();
+      killTimer = setTimeout(() => child.kill(), 1_000);
     }
   });
 });

@@ -47,6 +47,19 @@ report a `null` revision. A v2 deployment may set
 `SUMI_DOCS_EXPECTED_CORPUS_REVISION` to a full `sha256:` revision; a missing or
 mismatched revision fails before the listener becomes ready.
 
+## Runtime diagnostics
+
+`serve` reserves stdout for JSON-RPC. Runtime failures and optional lifecycle
+diagnostics use stderr. With `--verbose`, the server emits one-line JSON events
+for `sumi_docs_mcp.starting`, `sumi_docs_mcp.ready`, and, after a successful
+snapshot load, `sumi_docs_mcp.corpus_loaded`.
+
+Lifecycle events contain only the transport, package version, source
+classification, and bounded corpus metadata such as document count and corpus
+revision. They do not include the source path, source URL, credentials, or a
+stack trace. Error diagnostics remain on stderr whether or not verbose mode is
+enabled.
+
 After building the Web workspace, the same sealed projection can be consumed
 directly from disk without an HTTP source server:
 
