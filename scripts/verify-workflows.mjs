@@ -5,6 +5,12 @@ import { pathToFileURL } from "node:url";
 import { parse } from "yaml";
 
 const PINNED_ACTION = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+@[0-9a-f]{40}$/u;
+const CHANGESETS_ACTION =
+  "changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d";
+const DEPENDABOT_METADATA_ACTION =
+  "dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a";
+const DEPENDENCY_REVIEW_ACTION =
+  "actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48";
 const PNPM_BOOTSTRAP = [
   "npm install --global --ignore-scripts --registry https://registry.npmjs.org pnpm@10.26.0",
   "pnpm --version",
@@ -16,9 +22,11 @@ const RAW_DEPLOYMENT_EVIDENCE_JQ =
 const ACTIVE_WORKFLOWS = new Set([
   "candidate.yml",
   "ci.yml",
+  "dependabot-policy.yml",
   "operations-observe.yml",
   "pages.yml",
   "production-recovery.yml",
+  "release-intent.yml",
 ]);
 
 function workflowSteps(workflow) {
@@ -85,9 +93,11 @@ function validatePnpmLifecycle(workflowName, jobName, job, errors) {
 export function validateWorkflowPolicy({
   ci,
   candidate,
+  dependabotPolicy,
   operations,
   pages,
   recovery,
+  releaseIntent,
   rootWorkflowNames,
   nestedWorkflowPaths,
 }) {
@@ -95,9 +105,11 @@ export function validateWorkflowPolicy({
   const workflows = {
     "ci.yml": ci,
     "candidate.yml": candidate,
+    "dependabot-policy.yml": dependabotPolicy,
     "operations-observe.yml": operations,
     "pages.yml": pages,
     "production-recovery.yml": recovery,
+    "release-intent.yml": releaseIntent,
   };
 
   for (const [name, workflow] of Object.entries(workflows)) {
@@ -124,6 +136,124 @@ export function validateWorkflowPolicy({
   if (nestedWorkflowPaths.length > 0) {
     errors.push(
       `Nested workflows are inert: ${nestedWorkflowPaths.join(", ")}`,
+    );
+  }
+
+  const releaseVersion = releaseIntent.jobs?.version;
+  const releaseSteps = releaseVersion?.steps ?? [];
+  const releaseCheckout = releaseSteps.find((step) =>
+    step.uses?.startsWith("actions/checkout@"),
+  );
+  const releaseNode = releaseSteps.find((step) =>
+    step.uses?.startsWith("actions/setup-node@"),
+  );
+  const versionPullRequest = releaseSteps.find(
+    (step) => step.name === "Maintain version pull request",
+  );
+  const releaseCommands = releaseSteps
+    .map(
+      (step) => `${String(step.run ?? "")}\n${JSON.stringify(step.with ?? {})}`,
+    )
+    .join("\n");
+  if (
+    !sameKeys(releaseIntent.on, ["push"]) ||
+    JSON.stringify(releaseIntent.on?.push?.branches) !==
+      JSON.stringify(["main"]) ||
+    !sameKeys(releaseIntent.permissions, ["contents", "pull-requests"]) ||
+    releaseIntent.permissions.contents !== "write" ||
+    releaseIntent.permissions["pull-requests"] !== "write" ||
+    releaseIntent.concurrency?.group !== "release-intent-main" ||
+    releaseIntent.concurrency?.["cancel-in-progress"] !== false ||
+    !sameKeys(releaseIntent.jobs, ["version"]) ||
+    releaseVersion?.["runs-on"] !== "ubuntu-24.04" ||
+    releaseVersion?.["timeout-minutes"] !== 10 ||
+    releaseVersion?.if !== "${{ github.repository == 'starSumi/sumi-docs' }}" ||
+    releaseCheckout?.with?.["fetch-depth"] !== 0 ||
+    releaseCheckout?.with?.["persist-credentials"] !== false ||
+    releaseNode?.with?.["node-version-file"] !== ".node-version" ||
+    versionPullRequest?.uses !== CHANGESETS_ACTION ||
+    !sameKeys(versionPullRequest?.with, [
+      "version",
+      "commit",
+      "title",
+      "github-token",
+    ]) ||
+    versionPullRequest?.with?.version !== "pnpm run release:version" ||
+    versionPullRequest?.with?.commit !== "chore(release): version packages" ||
+    versionPullRequest?.with?.title !== "chore(release): version packages" ||
+    versionPullRequest?.with?.["github-token"] !==
+      "${{ secrets.GITHUB_TOKEN }}" ||
+    versionPullRequest?.env !== undefined ||
+    /(?:changeset|npm|pnpm)\s+publish\b|\bgit\s+tag\b|NPM_TOKEN/iu.test(
+      releaseCommands,
+    )
+  ) {
+    errors.push(
+      "Release intent may maintain one pinned version pull request but must not publish, tag, or rebuild artifacts.",
+    );
+  }
+  validatePnpmLifecycle("Release intent", "version", releaseVersion, errors);
+
+  const dependabotJob = dependabotPolicy.jobs?.["patch-automerge"];
+  const dependabotSteps = dependabotJob?.steps ?? [];
+  const dependabotMetadata = dependabotSteps.find(
+    (step) => step.name === "Read verified Dependabot metadata",
+  );
+  const dependabotMerge = dependabotSteps.find(
+    (step) => step.name === "Enable squash auto-merge for patch updates",
+  );
+  const dependabotJobCondition = String(dependabotJob?.if ?? "");
+  const dependabotMergeCondition = String(dependabotMerge?.if ?? "");
+  if (
+    !sameKeys(dependabotPolicy.on, ["pull_request"]) ||
+    JSON.stringify(dependabotPolicy.on?.pull_request?.types) !==
+      JSON.stringify([
+        "opened",
+        "synchronize",
+        "reopened",
+        "ready_for_review",
+      ]) ||
+    !sameKeys(dependabotPolicy.permissions, ["contents", "pull-requests"]) ||
+    dependabotPolicy.permissions.contents !== "write" ||
+    dependabotPolicy.permissions["pull-requests"] !== "write" ||
+    dependabotPolicy.concurrency?.group !==
+      "dependabot-policy-${{ github.event.pull_request.number }}" ||
+    dependabotPolicy.concurrency?.["cancel-in-progress"] !== true ||
+    !sameKeys(dependabotPolicy.jobs, ["patch-automerge"]) ||
+    dependabotJob?.["runs-on"] !== "ubuntu-24.04" ||
+    dependabotJob?.["timeout-minutes"] !== 5 ||
+    !dependabotJobCondition.includes(
+      "github.repository == 'starSumi/sumi-docs'",
+    ) ||
+    !dependabotJobCondition.includes(
+      "github.event.pull_request.user.login == 'dependabot[bot]'",
+    ) ||
+    !dependabotJobCondition.includes(
+      "github.event.pull_request.base.ref == 'main'",
+    ) ||
+    !dependabotJobCondition.includes("!github.event.pull_request.draft") ||
+    dependabotMetadata?.uses !== DEPENDABOT_METADATA_ACTION ||
+    !sameKeys(dependabotMetadata?.with, ["github-token"]) ||
+    dependabotMetadata?.with?.["github-token"] !==
+      "${{ secrets.GITHUB_TOKEN }}" ||
+    dependabotMergeCondition !==
+      "steps.metadata.outputs.update-type == 'version-update:semver-patch' && !contains(github.event.pull_request.labels.*.name, 'github_actions')" ||
+    !sameKeys(dependabotMerge?.env, ["GH_TOKEN", "PR_URL"]) ||
+    dependabotMerge.env.GH_TOKEN !== "${{ secrets.GITHUB_TOKEN }}" ||
+    dependabotMerge.env.PR_URL !==
+      "${{ github.event.pull_request.html_url }}" ||
+    dependabotMerge.run !== 'gh pr merge --auto --squash "$PR_URL"' ||
+    dependabotSteps.some((step) =>
+      step.uses?.startsWith("actions/checkout@"),
+    ) ||
+    dependabotSteps.some((step) =>
+      /(?:checkout|pull_request_target|gh\s+pr\s+(?:review|edit)|git\s+)/iu.test(
+        `${String(step.run ?? "")}\n${JSON.stringify(step.with ?? {})}`,
+      ),
+    )
+  ) {
+    errors.push(
+      "Dependabot automation may only enable squash auto-merge for verified patch updates without checking out pull-request code.",
     );
   }
 
@@ -160,6 +290,34 @@ export function validateWorkflowPolicy({
   ) {
     errors.push(
       "CI commit policy must validate each materialized message file and fail safe across rewritten pushes.",
+    );
+  }
+  const dependencyReview = ci.jobs?.["dependency-review"];
+  const dependencyReviewSteps = dependencyReview?.steps ?? [];
+  const dependencyReviewCheckout = dependencyReviewSteps.find((step) =>
+    step.uses?.startsWith("actions/checkout@"),
+  );
+  const dependencyReviewAction = dependencyReviewSteps.find(
+    (step) => step.name === "Reject vulnerable dependency changes",
+  );
+  if (
+    dependencyReview?.if !== "${{ github.event_name == 'pull_request' }}" ||
+    dependencyReview?.["runs-on"] !== "ubuntu-24.04" ||
+    dependencyReview?.["timeout-minutes"] !== 10 ||
+    !sameKeys(dependencyReview?.permissions, ["contents"]) ||
+    dependencyReview.permissions.contents !== "read" ||
+    dependencyReviewCheckout?.with?.["persist-credentials"] !== false ||
+    dependencyReviewAction?.uses !== DEPENDENCY_REVIEW_ACTION ||
+    !sameKeys(dependencyReviewAction?.with, [
+      "fail-on-severity",
+      "fail-on-scopes",
+    ]) ||
+    dependencyReviewAction.with["fail-on-severity"] !== "moderate" ||
+    dependencyReviewAction.with["fail-on-scopes"] !==
+      "runtime, development, unknown"
+  ) {
+    errors.push(
+      "CI dependency review must reject moderate-or-higher vulnerabilities across every dependency scope with read-only authority.",
     );
   }
   validatePnpmLifecycle("CI", "verify", ci.jobs?.verify, errors);
@@ -1145,9 +1303,11 @@ export function loadWorkflowPolicyInput(root = process.cwd()) {
   return {
     ci: load("ci.yml"),
     candidate: load("candidate.yml"),
+    dependabotPolicy: load("dependabot-policy.yml"),
     operations: load("operations-observe.yml"),
     pages: load("pages.yml"),
     recovery: load("production-recovery.yml"),
+    releaseIntent: load("release-intent.yml"),
     rootWorkflowNames: readdirSync(workflowRoot)
       .filter((name) => /\.ya?ml$/iu.test(name))
       .sort(),

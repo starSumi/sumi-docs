@@ -131,6 +131,7 @@
     "docs/decisions/0013-standards-and-schema-authority.md",
     "docs/decisions/0014-single-build-dual-target-publication.md",
     "docs/decisions/0015-rust-core-and-npm-launcher.md",
+    "docs/decisions/0016-release-intent-and-artifact-promotion.md",
     "docs/configuration.md",
     "docs/contributing.md",
     "docs/development.md",

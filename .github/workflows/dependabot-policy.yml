@@ -1,0 +1,39 @@
+name: Dependabot policy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dependabot-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  patch-automerge:
+    name: Dependabot patch auto-merge
+    if: >-
+      github.repository == 'starSumi/sumi-docs' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.base.ref == 'main' &&
+      !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read verified Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable squash auto-merge for patch updates
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' &&
+          !contains(github.event.pull_request.labels.*.name, 'github_actions')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"

@@ -30,6 +30,20 @@ route and locale parity, immutable digests, and production dependencies.
 `verify:integration` starts the compiled MCP workspace package against the built site,
 calls its tools, and checks every returned page URL.
 
+## Dependency maintenance
+
+Dependabot checks the pnpm workspace, Rust native probe, container base image,
+and pinned GitHub Actions on a staggered weekly schedule. Compatible npm and
+Cargo minor or patch updates are grouped; major updates remain separate for
+review.
+
+Every dependency pull request runs the complete CI matrix and GitHub dependency
+review. Patch updates may be marked for squash auto-merge, but branch rules keep
+them pending until commit policy, Linux and Windows verification, container
+acceptance, and dependency review all pass. GitHub Actions updates are excluded
+from auto-merge so a workflow cannot approve a change to its own execution
+dependencies. Minor and major updates always require a maintainer decision.
+
 Only reviewed Markdown and MDX may enter the site build. Do not add model
 credentials, private documents, authenticated fetching, or browser-side stdio.
 Those features require a separately reviewed server boundary.

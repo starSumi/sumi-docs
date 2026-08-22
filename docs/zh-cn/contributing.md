@@ -36,6 +36,10 @@ Skill 与 Agent 集成，请先建立 issue。说明实际问题、预期外部�
 提交信息使用 Conventional Commits。私有主题分支落后时可以 rebase，但不要重写已被
 其他贡献者使用的提交。
 
+首次 0.1.0 npm bootstrap 完成后，如果 Pull Request 改变任一公开包的已发布行为，
+运行 `pnpm changeset`，选择所有受影响的包并写明面向用户的发布说明。只改文档、测试、
+仓库工具或私有 Web 应用时不需要空 changeset。changeset 只记录发布意图，不授予发布权。
+
 ## 验证完整投影
 
 运行：

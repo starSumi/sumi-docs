@@ -5,6 +5,8 @@ This file records user-visible changes. Internal phase notes are retained under
 
 ## Unreleased
 
+- Added reviewed release-intent and version-pull-request automation while
+  keeping publication bound to accepted package tarballs.
 - Added stateless Streamable HTTP to the Node.js distribution while preserving
   stdio as the default and SEA transport.
 - Added strict local v2 locator loading so the Web artifact and MCP container

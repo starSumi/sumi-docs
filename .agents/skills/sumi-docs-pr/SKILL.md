@@ -40,8 +40,10 @@ pnpm run verify:integration
 For content changes, require both locales, the reviewed content catalog, fresh
 translation-pair records after human semantic review, and a Web-to-MCP URL
 round trip. For a public contract change, update active documentation,
-examples, tests, and the changelog together. Report every failed or skipped
-gate.
+examples, tests, and the changelog together. After the initial 0.1.0 npm
+bootstrap, add a changeset for every public package whose published behavior
+changes. Do not use `changeset publish`; package promotion remains bound to the
+accepted candidate tarballs. Report every failed or skipped gate.
 
 ## Draft the pull request
 

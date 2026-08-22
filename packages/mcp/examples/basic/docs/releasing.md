@@ -31,6 +31,23 @@ product with a same-host empty official-SDK baseline. A failed performance
 command blocks release; p99 and maximum remain diagnostic rather than
 single-sample release thresholds.
 
+## Release intent and version pull requests
+
+The already versioned 0.1.0 packages use the separate first-publication bootstrap
+below. Do not create a 0.1.1 bump solely for release-tooling changes made before
+that baseline exists in the registry.
+
+After the bootstrap, public package behavior changes include a changeset in the
+contributing pull request. The contract and MCP packages remain independently
+versioned; select both when a contract change also changes MCP behavior or
+compatibility. The `Release intent` workflow may run `changeset version` to
+maintain a reviewed version pull request. It has no package-publication, tag,
+candidate-build, or protected-environment authority.
+
+Merge the version pull request before constructing the acceptance candidate.
+The candidate commit, tarball digests, and human acceptance then become the
+inputs to promotion. `changeset publish` is not an approved release command.
+
 ## Build an acceptance candidate
 
 Run the repository `Acceptance candidate` workflow from the latest `main` and

@@ -17,6 +17,7 @@
 - [ADR-0013: Assign one authority to each public contract](decisions/0013-standards-and-schema-authority.md)
 - [ADR-0014: Build one machine projection for Web and MCP deployment](decisions/0014-single-build-dual-target-publication.md)
 - [ADR-0015: Put the MCP core in Rust behind a thin npm launcher](decisions/0015-rust-core-and-npm-launcher.md)
+- [ADR-0016: Separate release intent from artifact promotion](decisions/0016-release-intent-and-artifact-promotion.md)
 
 ## Runtime boundary
 

@@ -27,5 +27,16 @@ pnpm run verify:integration
 生产依赖。`verify:integration` 会让已编译的 MCP workspace package 读取构建产物，调用工具，
 并验证每个返回的页面 URL。
 
+## 依赖维护
+
+Dependabot 按错开的每周计划检查 pnpm workspace、Rust native probe、容器基础镜像和
+固定到提交摘要的 GitHub Actions。兼容的 npm 与 Cargo minor 或 patch 更新会分组，
+major 更新保持独立并交由维护者评审。
+
+每个依赖 PR 都会运行完整 CI 矩阵和 GitHub dependency review。patch 更新可以进入
+squash auto-merge，但只有 commit policy、Linux 与 Windows 验证、容器验收和依赖审查
+全部通过后，分支规则才允许合并。GitHub Actions 更新不参与自动合并，避免 workflow
+自行批准其执行依赖的变更。minor 和 major 更新始终需要维护者决策。
+
 只有经过审核的 Markdown 和 MDX 才能进入站点构建。不要加入模型凭据、私有文档、
 认证抓取或浏览器端 stdio；这些能力需要单独评审的服务端边界。
