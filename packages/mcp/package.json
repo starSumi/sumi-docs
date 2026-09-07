@@ -1,6 +1,6 @@
 {
   "name": "@sumi-os/docs-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Read-only MCP server for Markdown, MDX, and OpenAPI documentation.",
   "publishConfig": {
     "access": "public",

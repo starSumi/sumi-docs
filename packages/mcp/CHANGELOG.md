@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+### Patch Changes
+
+- 9b5ad73: Make `--verbose` emit sanitized lifecycle diagnostics on stderr while keeping
+  stdio stdout reserved for JSON-RPC.
+
 This file records user-visible changes. Internal phase notes are retained under
 `docs/history/` and are not release records.
 
