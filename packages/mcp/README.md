@@ -191,8 +191,8 @@ configuration and does not alter the read-only contract.
 Runtime configuration comes from CLI arguments, not `.env` files:
 
 ```text
-sumi-docs-mcp serve [docs-source] [--config <path>] [--openapi <path>] [--base-url <url>] [--transport <stdio|streamable-http>] [HTTP options] [--verbose]
-sumi-docs-mcp doctor [docs-source] [--config <path>] [--json] [--show-paths]
+sumi-docs-mcp serve [docs-source] [--profile <name>] [--config <path>] [--openapi <path>] [--base-url <url>] [--transport <stdio|streamable-http>] [HTTP options] [--verbose]
+sumi-docs-mcp doctor [docs-source] [--profile <name>] [--config <path>] [--json] [--show-paths]
 ```
 
 `[docs-source]` is a local directory, an exact local `_mcp/v2/current.json`
@@ -202,6 +202,20 @@ Without a Git boundary, it inspects only the current directory and defaults to
 `<cwd>/docs`; it never climbs into a parent `.sumi` workspace container.
 `--base-url` controls clickable human-facing page URLs; it is not the remote
 content source.
+
+Named corpus profiles are opt-in. `--profile <name>` (or `"profile": "<name>"`
+in `sumi-docs.config.json`) reads `SUMI_DOCS_PROFILE_<NAME>_SOURCE` from the
+process environment. The value is an absolute local Markdown/MDX directory or
+an HTTPS manifest URL. This keeps host-owned paths out of the product and does
+not alter the default project `docs/` source:
+
+```powershell
+$env:SUMI_DOCS_PROFILE_SUMI_KNOWLEDGE_SOURCE = 'E:/path/to/knowledge'
+node dist/index.js serve --profile sumi_knowledge
+```
+
+The stdio process and all four tools remain read-only. A profile cannot be
+combined with a positional source.
 
 Doctor reports project-relative paths or explicit external placeholders by
 default. `--show-paths` is an opt-in for local diagnosis and is rejected by

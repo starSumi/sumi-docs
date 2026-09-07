@@ -9,6 +9,7 @@ import {
   normalizeRemoteManifestUrl,
 } from "./utils/remote-source-url.js";
 import { VERSION } from "./version.js";
+import { normalizeProfileName } from "./project-config.js";
 
 type LifecycleDiagnostic =
   | {
@@ -16,7 +17,7 @@ type LifecycleDiagnostic =
       transport: "stdio" | "streamable-http";
       version: string;
       sourceKind: "local-directory" | "local-v2" | "remote";
-      sourceOrigin: "cli" | "config" | "default";
+      sourceOrigin: "cli" | "profile" | "config" | "default";
       sourceFormat: "directory" | "manifest-v1" | "manifest-v2";
     }
   | {
@@ -45,13 +46,15 @@ function printHelp(): void {
   console.log(`Sumi-Docs-MCP ${VERSION} - Read-only MCP server for documentation
 
 Usage:
-  sumi-docs-mcp serve [docs-source] [--config <path>] [--openapi <path>] [--base-url <url>] [--transport <type>]
-  sumi-docs-mcp doctor [docs-source] [--config <path>] [--json] [--show-paths]
+  sumi-docs-mcp serve [docs-source] [--profile <name>] [--config <path>] [--openapi <path>] [--base-url <url>] [--transport <type>]
+  sumi-docs-mcp doctor [docs-source] [--profile <name>] [--config <path>] [--json] [--show-paths]
 
 Options:
   [docs-source]          Local directory, local _mcp/v2/current.json, or
                          remote HTTPS manifest/base URL
                          (default: project config, then <project-root>/docs)
+  --profile <name>       Opt-in named corpus; source comes from
+                         SUMI_DOCS_PROFILE_<NAME>_SOURCE
   --config <path>        Explicit sumi-docs.config.json path
   --openapi <path>       Path to an OpenAPI JSON specification
                          (local directory mode only; manifests declare it)
@@ -77,6 +80,7 @@ export function parseCliOptions(argv: string[]): ParsedCLIOptions | null {
   const args = minimist(argv, {
     string: [
       "config",
+      "profile",
       "openapi",
       "base-url",
       "transport",
@@ -93,6 +97,7 @@ export function parseCliOptions(argv: string[]): ParsedCLIOptions | null {
   if (args.help || args.version) return null;
   for (const option of [
     "config",
+    "profile",
     "openapi",
     "base-url",
     "transport",
@@ -125,7 +130,7 @@ export function parseCliOptions(argv: string[]): ParsedCLIOptions | null {
     args._.length > 2
   ) {
     throw new Error(
-      "Usage: sumi-docs-mcp serve [docs-source] [--config <path>] [--openapi <path>] [--base-url <url>] [--transport stdio]",
+      "Usage: sumi-docs-mcp serve [docs-source] [--profile <name>] [--config <path>] [--openapi <path>] [--base-url <url>] [--transport stdio]",
     );
   }
   const transport = args.transport ?? "stdio";
@@ -152,6 +157,18 @@ export function parseCliOptions(argv: string[]): ParsedCLIOptions | null {
     throw new Error("HTTP options require --transport streamable-http.");
   }
   const docsSource = args._[1] as string | undefined;
+  if (Array.isArray(args.profile)) {
+    throw new Error("--profile accepts one value.");
+  }
+  const profile =
+    typeof args.profile === "string"
+      ? normalizeProfileName(args.profile)
+      : undefined;
+  if (docsSource && profile) {
+    throw new Error(
+      "--profile cannot be combined with an explicit docs source.",
+    );
+  }
   if (docsSource && isRemoteDocsSource(docsSource)) {
     normalizeRemoteManifestUrl(docsSource);
     if (args.openapi) {
@@ -167,6 +184,7 @@ export function parseCliOptions(argv: string[]): ParsedCLIOptions | null {
   }
   const options: ParsedCLIOptions = {
     docsSource,
+    ...(profile && { profile }),
     openApiPath: args.openapi,
     baseUrl:
       typeof args["base-url"] === "string"

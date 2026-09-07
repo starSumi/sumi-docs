@@ -53,6 +53,11 @@ diagnostics stay on stderr and no local HTTP port is required. Streamable HTTP
 is a separate deployment surface for an explicitly configured remote or HTTP
 client; it is not the local agent default or a fallback transport.
 
+Host-owned shared corpora are opt-in profiles, not a hidden product default:
+set `SUMI_DOCS_PROFILE_<NAME>_SOURCE` in the MCP child environment and pass
+`--profile <name>`. Without that explicit profile, Sumi Docs still resolves the
+current project's `docs/` source.
+
 To expose the same corpus on a loopback Streamable HTTP endpoint:
 
 ```powershell

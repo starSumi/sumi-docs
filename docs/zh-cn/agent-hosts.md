@@ -55,6 +55,18 @@ stdin/stdout 交换 JSON-RPC。服务把诊断信息写入 stderr，不需要本
 按列表中的精确路径获取文档，以及查询 OpenAPI。MCP 初始化 instructions 会说明这套流程
 以及只读、进程快照边界。
 
+如果要暴露宿主管理的共享工程知识库，应把路径留在宿主环境中，并显式选择 profile：
+
+```toml
+[mcp_servers.sumi_knowledge]
+command = "node"
+args = ["packages/mcp/dist/index.js", "serve", "--profile", "sumi_knowledge"]
+env = { SUMI_DOCS_PROFILE_SUMI_KNOWLEDGE_SOURCE = "E:/path/to/knowledge" }
+```
+
+这仍然是本地 stdio 子进程，MCP 的四个工具仍是只读的。产品不会假定这个 profile 的位置；
+不传 `--profile` 的 Agent 仍然读取当前项目的 `docs/`。
+
 对于产品使用、架构、运维和稳定决策问题，Agent 应先查询这份经过审阅的投影，再直接
 搜索文档文件。实现改动仍以当前源码和测试为准。MCP 服务只约束自身的四工具表面，
 不会授予、撤销或取代 Agent 宿主的文件系统权限与 sandbox。

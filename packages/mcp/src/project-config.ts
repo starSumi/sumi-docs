@@ -10,12 +10,42 @@ import {
 } from "./utils/remote-source-url.js";
 
 export const PROJECT_CONFIG_NAME = "sumi-docs.config.json";
+const PROFILE_NAME_PATTERN = /^[a-z0-9][a-z0-9_]{0,63}$/u;
 
 export interface ProjectConfig {
   version?: 1;
   source?: string;
+  profile?: string;
   openapi?: string;
   baseUrl?: string;
+}
+
+export function normalizeProfileName(value: string): string {
+  const profile = value.trim().toLowerCase();
+  if (!PROFILE_NAME_PATTERN.test(profile)) {
+    throw new Error(
+      "Profile names must start with a letter or number and contain only lowercase letters, numbers, or underscores (maximum 64 characters).",
+    );
+  }
+  return profile;
+}
+
+function profileSourceEnvironmentKey(profile: string): string {
+  return `SUMI_DOCS_PROFILE_${profile.toUpperCase()}_SOURCE`;
+}
+
+function resolveProfileSource(
+  profile: string,
+  environment: NodeJS.ProcessEnv,
+): string {
+  const environmentKey = profileSourceEnvironmentKey(profile);
+  const source = environment[environmentKey]?.trim();
+  if (!source) {
+    throw new Error(
+      `Profile '${profile}' is not configured; set ${environmentKey} to a local Markdown/MDX directory or an HTTPS manifest.`,
+    );
+  }
+  return source;
 }
 
 interface ProjectContext {
@@ -108,7 +138,13 @@ export async function readProjectConfig(path: string): Promise<ProjectConfig> {
     );
   }
   const candidate = parsed as Record<string, unknown>;
-  const allowedFields = new Set(["version", "source", "openapi", "baseUrl"]);
+  const allowedFields = new Set([
+    "version",
+    "source",
+    "profile",
+    "openapi",
+    "baseUrl",
+  ]);
   const unknownField = Object.keys(candidate).find(
     (field) => !allowedFields.has(field),
   );
@@ -120,7 +156,7 @@ export async function readProjectConfig(path: string): Promise<ProjectConfig> {
   if (candidate.version !== undefined && candidate.version !== 1) {
     throw new Error(`Project config ${path} supports only version 1.`);
   }
-  for (const field of ["source", "openapi", "baseUrl"] as const) {
+  for (const field of ["source", "profile", "openapi", "baseUrl"] as const) {
     const value = candidate[field];
     if (
       value !== undefined &&
@@ -135,6 +171,9 @@ export async function readProjectConfig(path: string): Promise<ProjectConfig> {
     ...(candidate.version === 1 && { version: 1 as const }),
     ...(typeof candidate.source === "string" && {
       source: candidate.source.trim(),
+    }),
+    ...(typeof candidate.profile === "string" && {
+      profile: candidate.profile.trim(),
     }),
     ...(typeof candidate.openapi === "string" && {
       openapi: candidate.openapi.trim(),
@@ -241,6 +280,7 @@ async function validateLocalSource(
 export async function resolveCliOptions(
   options: ParsedCLIOptions,
   cwd: string = process.cwd(),
+  environment: NodeJS.ProcessEnv = process.env,
 ): Promise<ResolvedCLIOptions> {
   const normalizedCwd = resolve(cwd);
   const context = await resolveProjectContext(
@@ -251,6 +291,23 @@ export async function resolveCliOptions(
     ? await readProjectConfig(context.configPath)
     : {};
 
+  if (config.source && config.profile) {
+    throw new Error(
+      `Project config ${context.configPath ?? PROJECT_CONFIG_NAME} cannot define both source and profile.`,
+    );
+  }
+
+  const selectedProfile = options.profile
+    ? normalizeProfileName(options.profile)
+    : config.profile
+      ? normalizeProfileName(config.profile)
+      : undefined;
+  if (options.profile && options.docsSource) {
+    throw new Error(
+      "--profile cannot be combined with an explicit docs source.",
+    );
+  }
+
   let docsSource: string;
   let sourceOrigin: ResolvedCLIOptions["sourceOrigin"];
   if (options.docsSource) {
@@ -258,6 +315,17 @@ export async function resolveCliOptions(
       ? normalizeRemoteManifestUrl(options.docsSource).href
       : resolve(normalizedCwd, options.docsSource);
     sourceOrigin = "cli";
+  } else if (selectedProfile) {
+    const profileSource = resolveProfileSource(selectedProfile, environment);
+    if (!isRemoteDocsSource(profileSource) && !isAbsolute(profileSource)) {
+      throw new Error(
+        `Profile '${selectedProfile}' must resolve to an absolute local source path or an HTTPS manifest URL.`,
+      );
+    }
+    docsSource = isRemoteDocsSource(profileSource)
+      ? normalizeRemoteManifestUrl(profileSource).href
+      : resolve(normalizedCwd, profileSource);
+    sourceOrigin = "profile";
   } else if (config.source && context.configPath) {
     docsSource = isRemoteDocsSource(config.source)
       ? normalizeRemoteManifestUrl(config.source).href
@@ -279,7 +347,7 @@ export async function resolveCliOptions(
     config.openapi &&
     context.configPath &&
     !(
-      sourceOrigin === "cli" &&
+      (sourceOrigin === "cli" || sourceOrigin === "profile") &&
       (isRemoteDocsSource(docsSource) || isLocalV2LocatorPath(docsSource))
     )
   ) {
@@ -333,5 +401,9 @@ export async function resolveCliOptions(
           ? "manifest-v2"
           : "manifest-v1",
     ...(context.configPath && { configPath: context.configPath }),
+    ...(sourceOrigin === "profile" &&
+      selectedProfile && {
+        profile: selectedProfile,
+      }),
   };
 }
