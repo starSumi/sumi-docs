@@ -47,6 +47,10 @@ stdin/stdout 交换 JSON-RPC 消息，诊断信息写入 stderr，不需要本�
 Streamable HTTP 是显式配置的远程或 HTTP client 部署面；它不是本地 Agent 的默认
 传输，也不是 stdio 的 fallback。
 
+宿主管理的共享语料只通过显式 profile 接入，不会成为隐藏的产品默认值：在 MCP 子进程
+环境中设置 `SUMI_DOCS_PROFILE_<NAME>_SOURCE`，再传入 `--profile <name>`。不指定 profile
+时，Sumi Docs 仍然解析当前项目的 `docs/`。
+
 若要在回环 Streamable HTTP endpoint 上提供同一语料：
 
 ```powershell

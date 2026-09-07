@@ -137,6 +137,87 @@ test("explicit CLI source wins and may be outside the project root", async () =>
   });
 });
 
+test("an explicit profile resolves an externally injected source", async () => {
+  await withFixture(async (root) => {
+    const project = join(root, "project");
+    const external = join(root, "global-knowledge");
+    await mkdir(join(project, ".git"), { recursive: true });
+    await writeDocument(join(project, "docs"), "project.md");
+    await writeDocument(external, "knowledge.md");
+
+    const resolvedOptions = await resolveCliOptions(
+      parseCliOptions(["serve", "--profile", "sumi_knowledge"])!,
+      project,
+      { SUMI_DOCS_PROFILE_SUMI_KNOWLEDGE_SOURCE: external },
+    );
+
+    assert.equal(resolvedOptions.docsSource, external);
+    assert.equal(resolvedOptions.profile, "sumi_knowledge");
+    assert.equal(resolvedOptions.sourceOrigin, "profile");
+  });
+});
+
+test("a config profile is opt-in and does not replace the project default", async () => {
+  await withFixture(async (root) => {
+    const project = join(root, "project");
+    const external = join(root, "global-knowledge");
+    await mkdir(join(project, ".git"), { recursive: true });
+    await writeDocument(join(project, "docs"), "project.md");
+    await writeDocument(external, "knowledge.md");
+    await writeFile(
+      join(project, "sumi-docs.config.json"),
+      JSON.stringify({ version: 1, profile: "sumi_knowledge" }),
+    );
+
+    const profileOptions = await resolveCliOptions(
+      parseCliOptions(["serve"])!,
+      project,
+      { SUMI_DOCS_PROFILE_SUMI_KNOWLEDGE_SOURCE: external },
+    );
+    assert.equal(profileOptions.docsSource, external);
+    assert.equal(profileOptions.sourceOrigin, "profile");
+
+    const otherProject = join(root, "other-project");
+    await writeDocument(otherProject, "docs/project.md");
+    const defaultOptions = await resolveCliOptions(
+      parseCliOptions(["serve"])!,
+      otherProject,
+      { SUMI_DOCS_PROFILE_SUMI_KNOWLEDGE_SOURCE: external },
+    );
+    assert.equal(defaultOptions.docsSource, join(otherProject, "docs"));
+    assert.equal(defaultOptions.sourceOrigin, "default");
+  });
+});
+
+test("profile resolution fails closed when its environment source is absent", async () => {
+  await withFixture(async (root) => {
+    await assert.rejects(
+      resolveCliOptions(
+        parseCliOptions(["serve", "--profile", "sumi_knowledge"])!,
+        root,
+        {},
+      ),
+      /SUMI_DOCS_PROFILE_SUMI_KNOWLEDGE_SOURCE/iu,
+    );
+  });
+});
+
+test("config rejects ambiguous source and profile fields", async () => {
+  await withFixture(async (root) => {
+    const config = join(root, "sumi-docs.config.json");
+    await writeFile(
+      config,
+      JSON.stringify({ version: 1, source: "docs", profile: "sumi_knowledge" }),
+    );
+    await assert.rejects(
+      resolveCliOptions(parseCliOptions(["serve", "--config", config])!, root, {
+        SUMI_DOCS_PROFILE_SUMI_KNOWLEDGE_SOURCE: join(root, "docs"),
+      }),
+      /both source and profile/i,
+    );
+  });
+});
+
 test("explicit remote source does not inherit a configured local OpenAPI path", async () => {
   await withFixture(async (root) => {
     const project = join(root, "project");

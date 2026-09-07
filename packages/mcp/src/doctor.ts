@@ -18,7 +18,7 @@ export interface DoctorReport {
   };
   source: {
     value: string;
-    origin: "cli" | "config" | "default";
+    origin: "cli" | "profile" | "config" | "default";
     kind: "local" | "remote";
     format: "directory" | "manifest-v1" | "manifest-v2";
     loadable: true;

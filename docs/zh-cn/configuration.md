@@ -6,12 +6,13 @@ description: 配置来源发现、公开页面 URL、运行模式和状态放置
 CLI 支持显式参数和严格的受版本控制项目配置：
 
 ```text
-sumi-docs-mcp serve [docs-source] [--config <path>] [--openapi <path>] [--base-url <url>] [--transport <stdio|streamable-http>] [HTTP options] [--verbose]
-sumi-docs-mcp doctor [docs-source] [--config <path>] [--json] [--show-paths]
+sumi-docs-mcp serve [docs-source] [--profile <name>] [--config <path>] [--openapi <path>] [--base-url <url>] [--transport <stdio|streamable-http>] [HTTP options] [--verbose]
+sumi-docs-mcp doctor [docs-source] [--profile <name>] [--config <path>] [--json] [--show-paths]
 ```
 
-解析顺序为：显式 CLI source、显式 `--config`、当前 Git 边界内最近的
-`sumi-docs.config.json`，最后是可信项目根的 `docs/`。没有 Git 时不会向父目录搜索。
+解析顺序为：显式 CLI source、显式 CLI profile、指定或当前 Git 边界内最近的
+`sumi-docs.config.json` 中的 source/profile，最后是可信项目根的 `docs/`。
+`--config` 用于选择要读取的配置文件。没有 Git 时不会向父目录搜索。
 
 显式 CLI source 选择本地 v2 locator 或远程 manifest 时，配置中的目录 `openapi` 属于
 已被替换的 source，因此会被忽略。这两种 manifest-backed source 都会拒绝显式 CLI
@@ -22,6 +23,25 @@ sumi-docs-mcp doctor [docs-source] [--config <path>] [--json] [--show-paths]
 `docs-source` 决定机器读取的内容，可以是本地 Markdown/MDX 目录、Web publisher 生成的
 精确本地 `_mcp/v2/current.json` locator，也可以是远程 HTTPS manifest 或其目录地址。
 任意本地 JSON 文件与直接 v2 manifest 路径都会被拒绝。
+
+### 显式 corpus profile
+
+Profile 是由宿主注入语料的显式别名。可以传入 `--profile <name>`，也可以在
+`sumi-docs.config.json` 中设置 `"profile": "<name>"`；服务随后从进程环境读取
+`SUMI_DOCS_PROFILE_<NAME>_SOURCE`。名称必须是小写字母、数字或下划线，环境变量名会转成
+大写。变量值可以是绝对路径形式的本地 Markdown/MDX 目录，或 HTTPS manifest URL。
+Sumi Docs 不内置 profile 注册表，也不会写入某台机器的绝对路径。
+
+例如 harness 可以这样启动只读 stdio 服务：
+
+```powershell
+$env:SUMI_DOCS_PROFILE_SUMI_KNOWLEDGE_SOURCE = 'E:\path\to\knowledge'
+node packages/mcp/dist/index.js serve --profile sumi_knowledge
+```
+
+只有明确指定 profile 时才会选择该语料。没有 profile 时仍按原有规则发现项目的
+`docs/`。位置参数 source 不能与 `--profile` 同时使用。profile 的环境变量是宿主输入，
+因此同一个产品可以服务不同语料，而不需要把路径写进产品代码。
 
 `--base-url` 决定 MCP 结果中供人打开的 URL。它不会托管内容，也不会改变 MCP 传输。
 Markdown 扩展名会被移除，末段为 `index.md` 或 `index.mdx` 时映射到所在目录页面。

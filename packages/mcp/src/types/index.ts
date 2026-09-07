@@ -98,6 +98,7 @@ export interface StreamableHttpOptions {
 export interface ParsedCLIOptions {
   transport: "stdio" | "streamable-http";
   docsSource?: string;
+  profile?: string;
   openApiPath?: string;
   baseUrl?: string;
   configPath?: string;
@@ -108,8 +109,9 @@ export interface ParsedCLIOptions {
 /** Fully resolved CLI values and their discovery provenance. */
 export interface ResolvedCLIOptions extends CLIOptions {
   configPath?: string;
+  profile?: string;
   projectRoot: string;
-  sourceOrigin: "cli" | "config" | "default";
+  sourceOrigin: "cli" | "profile" | "config" | "default";
   sourceKind: "local-directory" | "local-v2" | "remote";
   sourceFormat: "directory" | "manifest-v1" | "manifest-v2";
 }

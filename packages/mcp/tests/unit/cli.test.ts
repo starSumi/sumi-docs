@@ -237,6 +237,18 @@ test("parseCliOptions accepts discovery and explicit config", () => {
       verbose: false,
     },
   );
+  assert.deepEqual(parseCliOptions(["serve", "--profile", "sumi_knowledge"]), {
+    docsSource: undefined,
+    profile: "sumi_knowledge",
+    openApiPath: undefined,
+    baseUrl: undefined,
+    transport: "stdio",
+    verbose: false,
+  });
+  assert.throws(
+    () => parseCliOptions(["serve", "docs", "--profile", "sumi_knowledge"]),
+    /cannot be combined/i,
+  );
 });
 
 test("parseDoctorOptions accepts the JSON diagnostic mode", () => {

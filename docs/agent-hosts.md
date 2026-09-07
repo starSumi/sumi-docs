@@ -64,6 +64,20 @@ keyword, fetch an exact listed path, and inspect OpenAPI without loading a
 Skill. MCP initialization instructions describe that workflow and its
 read-only, snapshot-based limits.
 
+To expose a host-owned corpus such as a shared engineering knowledge base,
+keep the corpus path in the host environment and opt in to a named profile:
+
+```toml
+[mcp_servers.sumi_knowledge]
+command = "node"
+args = ["packages/mcp/dist/index.js", "serve", "--profile", "sumi_knowledge"]
+env = { SUMI_DOCS_PROFILE_SUMI_KNOWLEDGE_SOURCE = "E:/path/to/knowledge" }
+```
+
+This remains a local stdio child process and the four MCP tools remain
+read-only. The product does not assume that profile's location, and an agent
+that omits `--profile` still reads the current project's `docs/` source.
+
 For product usage, architecture, operations, and stable decisions, agents
 should query this reviewed projection before scanning documentation files.
 Implementation work still uses source and tests as the current authority. The
