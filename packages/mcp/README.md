@@ -7,12 +7,9 @@ starts the process and exchanges JSON-RPC on stdin/stdout. It also exposes the
 same four tools over stateless Streamable HTTP for an explicitly configured
 remote or HTTP deployment.
 
-Source is hosted at [GitHub](https://github.com/starSumi/sumi-docs). The first
-public npm bootstrap was published as `@sumi-labs/docs-mcp@0.1.0`; this checkout's
-manifest is still named `@sumi-os/docs-mcp`, which is not that registry identity.
-Before using a published package, verify the scope and accepted release
-provenance in [Releasing](../../docs/releasing.md). Otherwise run this checkout
-locally or build the documented executable artifact.
+Source is hosted at [GitHub](https://github.com/starSumi/sumi-docs). No npm
+package or GitHub Release has been published for pre-release `0.1.0`; run the
+checkout locally or build the documented executable artifact.
 
 ## Quick start
 

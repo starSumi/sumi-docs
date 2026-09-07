@@ -14,12 +14,8 @@ an agent host is the MCP client.
 
 The [source repository](https://github.com/starSumi/sumi-docs) and
 [documentation site](https://starsumi.github.io/sumi-docs/) are public and
-under active development. The first public npm bootstrap was published under
-`@sumi-labs` on 2026-08-23 (`corpus-contract@0.1.0` and `docs-mcp@0.1.0`).
-This checkout's package manifests still use the historical `@sumi-os/*` scope,
-which is not the published package identity; see [Releasing](docs/releasing.md)
-before installing or promoting a package. No supported binary has been
-published by this checkout.
+under active development. No npm package, tagged GitHub Release, or supported
+binary has been published.
 
 ## Prerequisites
 
