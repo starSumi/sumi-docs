@@ -3,18 +3,15 @@ title: 发布
 description: 构建、验收、提升和回滚不可变的站点候选产物。
 ---
 
-公开源代码和发布产品是两个不同事件。代码提交可以公开，但 npm 包、已部署站点、
-Git 标签或 GitHub Release 仍然可以不存在。
+公开源代码、包发布和发布产品是不同事件。本页只描述站点及可选远程 MCP 的发布面；
+包身份与 registry 提升由外部 release harness 维护。
 
 ## 发布意图与包版本
 
-当前已经写入版本号的 0.1.0 包使用下文所述的首次发布 bootstrap。在该基线进入 registry
-之前，不要仅为发布工具改动制造 0.1.1 版本。
-
-0.1.0 bootstrap 完成后，如果 Pull Request 改变了 `@sumi-os/corpus-contract` 或
-`@sumi-os/docs-mcp` 的已发布行为，就运行 `pnpm changeset`，记录受影响的包、semver
-影响和客观的发布说明。两个包独立版本化；只有 contract 改动同时改变 MCP 行为或兼容性
-时才选择两者。只改文档、测试、仓库工具或私有 Web 应用时，不需要空 changeset。
+如果 Pull Request 改变了某个包的已发布行为，就运行 `pnpm changeset`，按照当前 workspace
+manifest 记录受影响的包、semver 影响和客观的发布说明。提升前必须由外部 release harness
+重新核对包身份与 registry 来源证明。包独立版本化；只有 contract 改动同时改变 MCP 行为或
+兼容性时才选择两者。只改文档、测试、仓库工具或私有 Web 应用时，不需要空 changeset。
 
 发布意图合入 `main` 后，`Release intent` 工作流只维护一个经过评审的版本 Pull Request。
 它可以更新公开包版本、内部依赖元数据和包级 changelog，但不会发布包、创建标签、构建
@@ -65,12 +62,7 @@ image digest 和 image ID。
 时，recovery workflow 使用同一次运行绑定的证据进行补偿，不会重新构建旧产物。第一次
 发布站点因没有旧产物，必须手动 dispatch 并明确确认 `bootstrap`。
 
-该生产工作流不会发布 npm package、Windows 可执行文件、Git tag 或 GitHub Release。
-
-首次 npm 发布是独立的 bootstrap 操作。它要求已经证明对 `@sumi-os` scope 的控制权并
-启用双因素认证，先发布已验收的精确 corpus-contract tarball，再发布已验收的精确 MCP
-tarball。后续版本使用受保护的 npm trusted publisher、staged publishing 和人工批准。
-两条路径都不得重新构建已验收的 tarball，也不得使用未经评审的长期 registry 写入 token。
-
-两条路径都不使用 `changeset publish`。publisher 只能消费已验收的 tarball，并核对其
-提交和校验和；不得从版本 Pull Request 重新构建。
+该生产工作流不会发布 package、Windows 可执行文件、Git tag 或 GitHub Release。包发布是由
+外部 release harness 负责的独立提升操作；它必须消费已验收的精确 tarball，核对提交和校验和，
+并执行自身的 registry 认证、双因素或 trusted publisher、批准和回滚门禁。不得从版本 Pull
+Request 重新构建已验收的 tarball。

@@ -43,5 +43,5 @@ docs/skills-and-orchestration.md: bb2efcc498270cd48574cbd483e7349d43ea8d11
 docs/zh-cn/skills-and-orchestration.md: 0a481684aa1f8865d1c7ce5e19cf85aa86faf04b
 docs/development.md: 198b925d374ce93f37d01fc21c61502f043c7159
 docs/zh-cn/development.md: 2136db0ecd0a4216d8fee02157848a1aa152c5ec
-docs/releasing.md: aec9ef37eb9ece1acc4dd63a7cd6026f52fdaed5
-docs/zh-cn/releasing.md: e497f8f9a49650b24f4e51bc557bb79fc6f644d2
+docs/releasing.md: 3f6b482f96647eb9f1f2bb77566c2a8de13baca1
+docs/zh-cn/releasing.md: 84087ae39b53f38f3ac02bd46461177c969f8a0f
