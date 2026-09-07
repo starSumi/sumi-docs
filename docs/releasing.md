@@ -3,39 +3,21 @@ title: Releasing
 description: Build, review, promote, and roll back an immutable site candidate.
 ---
 
-Source publication, npm package publication, and a product release are separate
-events. A commit may be public while no deployed site, tag, or GitHub Release
-exists, and package publication may use a different scope from the current
-checkout's manifests.
+Source publication and a product release are separate events. A commit may be
+public while no npm registry package, deployed site, tag, or GitHub Release exists.
 
 ## Release intent and package versions
 
-The first public npm bootstrap completed on 2026-08-23 under the `@sumi-labs`
-scope after the initial `@sumi-os/*` lookup returned 404 and PR #10 changed the
-scope. The published 0.1.0 packages were:
-
-| Package                            | First public observation (UTC) |
-| ---------------------------------- | ------------------------------ |
-| `@sumi-labs/corpus-contract@0.1.0` | 2026-08-23 06:57:02            |
-| `@sumi-labs/docs-mcp@0.1.0`        | 2026-08-23 07:03:35            |
-
-The current checkout still declares `@sumi-os/corpus-contract` and
-`@sumi-os/docs-mcp` in its manifests. Those names are not aliases for the
-published `@sumi-labs` packages. Before any new candidate is promoted, the
-release operator must reconcile package names, workspace dependencies,
-changesets, and provenance with the published scope; a source checkout alone
-is not evidence that an npm identity is publishable.
-Record the exact registry query and accepted tarball digests in the release
-evidence; a live package listing does not prove that the current checkout is
-the same source.
+The already versioned 0.1.0 packages use the separate first-publication bootstrap
+described below. Do not create a 0.1.1 bump solely for release-tooling changes
+made before that baseline exists in the registry.
 
 After the 0.1.0 bootstrap, a pull request that changes the published behavior of
-the `@sumi-labs/corpus-contract` or `@sumi-labs/docs-mcp` product identities runs
-`pnpm changeset` and records the affected package, semver impact, and factual
-release note. The packages have independent versions; select both only when a
-contract change also changes MCP behavior or compatibility. Documentation-only,
-test-only, repository-tooling, and private Web changes do not require an empty
-changeset.
+`@sumi-os/corpus-contract` or `@sumi-os/docs-mcp` runs `pnpm changeset` and records
+the affected package, semver impact, and factual release note. The packages have
+independent versions; select both only when a contract change also changes MCP
+behavior or compatibility. Documentation-only, test-only, repository-tooling,
+and private Web changes do not require an empty changeset.
 
 When release intent reaches `main`, the `Release intent` workflow maintains one
 reviewed version pull request. It may update public package versions, internal
@@ -104,13 +86,12 @@ exists.
 This production workflow does not publish the npm package, Windows executable,
 Git tag, or GitHub Release.
 
-Future npm publication is a separate promotion operation. It requires proven
-control of the published `@sumi-labs` scope (or an explicitly approved scope
-migration), two-factor authentication, and the exact accepted corpus-contract
-tarball before the exact accepted MCP tarball. Subsequent releases use a
-protected npm trusted publisher with staged publishing and human approval.
-Neither path may rebuild the accepted tarballs or use an unreviewed long-lived
-registry write token.
+The first npm publication is a separate bootstrap operation. It requires proven
+control of the `@sumi-os` scope and two-factor authentication, and publishes the
+exact accepted corpus-contract tarball before the exact accepted MCP tarball.
+Subsequent releases use a protected npm trusted publisher with staged publishing
+and human approval. Neither path may rebuild the accepted tarballs or use an
+unreviewed long-lived registry write token.
 
 `changeset publish` is not part of either path. A publisher must consume the
 accepted tarballs and verify their commit and checksums; it must not rebuild them

@@ -11,11 +11,8 @@ Sumi Docs 将一套经过评审的文档语料发布给两类使用者：
 寻址的投影，Agent 宿主是 MCP client。
 
 [源码仓库](https://github.com/starSumi/sumi-docs)和
-[文档站](https://starsumi.github.io/sumi-docs/)已公开并处于持续开发阶段。第一次公开的
-npm bootstrap 在 2026-08-23 使用 `@sumi-labs` scope 发布了
-`corpus-contract@0.1.0` 和 `docs-mcp@0.1.0`。当前 checkout 的 package manifest 仍使用
-历史 `@sumi-os/*` scope，它不是已发布的包身份；安装或提升 package 前请阅读
-[发布](docs/zh-cn/releasing.md)。当前 checkout 尚未发布受支持的二进制文件。
+[文档站](https://starsumi.github.io/sumi-docs/)已公开并处于持续开发阶段。目前
+尚未发布 npm package、带 tag 的 GitHub Release 或受支持的二进制文件。
 
 ## 前置要求
 

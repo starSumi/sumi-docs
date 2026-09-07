@@ -3,32 +3,18 @@ title: 发布
 description: 构建、验收、提升和回滚不可变的站点候选产物。
 ---
 
-公开源代码、npm 包发布和发布产品是三个不同事件。代码提交可以公开，但已部署站点、
-Git 标签或 GitHub Release 仍然可以不存在；包发布使用的 scope 也可能不同于当前
-checkout 的 manifest。
+公开源代码和发布产品是两个不同事件。代码提交可以公开，但 npm 包、已部署站点、
+Git 标签或 GitHub Release 仍然可以不存在。
 
 ## 发布意图与包版本
 
-第一次公开 npm bootstrap 已于 2026-08-23 在 `@sumi-labs` scope 完成：最初查询
-`@sumi-os/*` 返回 404，随后 PR #10 修改了 scope。公开的 0.1.0 包为：
+当前已经写入版本号的 0.1.0 包使用下文所述的首次发布 bootstrap。在该基线进入 registry
+之前，不要仅为发布工具改动制造 0.1.1 版本。
 
-| Package                            | 第一次公开观察时间（UTC） |
-| ---------------------------------- | ------------------------- |
-| `@sumi-labs/corpus-contract@0.1.0` | 2026-08-23 06:57:02       |
-| `@sumi-labs/docs-mcp@0.1.0`        | 2026-08-23 07:03:35       |
-
-当前 checkout 的 manifest 仍声明 `@sumi-os/corpus-contract` 和
-`@sumi-os/docs-mcp`。这些名称不是已发布 `@sumi-labs` 包的 alias。提升任何新候选
-之前，发布者必须把包名、workspace 依赖、changeset 和 provenance 与公开 scope
-重新对齐；仅有源码 checkout 不能证明某个 npm identity 可以发布。
-发布证据还必须记录精确的 registry 查询和已验收 tarball 的摘要；实时 package 列表不能
-证明当前 checkout 与已发布源代码相同。
-
-0.1.0 bootstrap 完成后，如果 Pull Request 改变了 `@sumi-labs/corpus-contract` 或
-`@sumi-labs/docs-mcp` 产品 identity 的已发布行为，就运行 `pnpm changeset`，记录受影响
-的包、semver 影响和客观的发布说明。两个包独立版本化；只有 contract 改动同时改变 MCP
-行为或兼容性时才选择两者。只改文档、测试、仓库工具或私有 Web 应用时，不需要空
-changeset。
+0.1.0 bootstrap 完成后，如果 Pull Request 改变了 `@sumi-os/corpus-contract` 或
+`@sumi-os/docs-mcp` 的已发布行为，就运行 `pnpm changeset`，记录受影响的包、semver
+影响和客观的发布说明。两个包独立版本化；只有 contract 改动同时改变 MCP 行为或兼容性
+时才选择两者。只改文档、测试、仓库工具或私有 Web 应用时，不需要空 changeset。
 
 发布意图合入 `main` 后，`Release intent` 工作流只维护一个经过评审的版本 Pull Request。
 它可以更新公开包版本、内部依赖元数据和包级 changelog，但不会发布包、创建标签、构建
@@ -81,11 +67,10 @@ image digest 和 image ID。
 
 该生产工作流不会发布 npm package、Windows 可执行文件、Git tag 或 GitHub Release。
 
-后续 npm 发布是独立的提升操作。它要求已经证明对公开的 `@sumi-labs` scope（或经过明确
-批准的 scope 迁移）的控制权并启用双因素认证，先发布已验收的精确 corpus-contract tarball，
-再发布已验收的精确 MCP tarball。后续版本使用受保护的 npm trusted publisher、staged
-publishing 和人工批准。两条路径都不得重新构建已验收的 tarball，也不得使用未经评审的
-长期 registry 写入 token。
+首次 npm 发布是独立的 bootstrap 操作。它要求已经证明对 `@sumi-os` scope 的控制权并
+启用双因素认证，先发布已验收的精确 corpus-contract tarball，再发布已验收的精确 MCP
+tarball。后续版本使用受保护的 npm trusted publisher、staged publishing 和人工批准。
+两条路径都不得重新构建已验收的 tarball，也不得使用未经评审的长期 registry 写入 token。
 
 两条路径都不使用 `changeset publish`。publisher 只能消费已验收的 tarball，并核对其
 提交和校验和；不得从版本 Pull Request 重新构建。
