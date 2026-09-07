@@ -14,8 +14,9 @@ an agent host is the MCP client.
 
 The [source repository](https://github.com/starSumi/sumi-docs) and
 [documentation site](https://starsumi.github.io/sumi-docs/) are public and
-under active development. No npm package, tagged GitHub Release, or supported
-binary has been published.
+under active development. Package publication, tagged releases, and supported
+binary artifacts are separate release surfaces; verify the relevant external
+artifact and provenance before consuming one.
 
 ## Prerequisites
 

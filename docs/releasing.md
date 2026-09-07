@@ -3,21 +3,20 @@ title: Releasing
 description: Build, review, promote, and roll back an immutable site candidate.
 ---
 
-Source publication and a product release are separate events. A commit may be
-public while no npm registry package, deployed site, tag, or GitHub Release exists.
+Source publication, package publication, and a product release are separate
+events. This document covers the site and optional remote MCP release surfaces;
+package identity and registry promotion are maintained by the external release
+harness.
 
 ## Release intent and package versions
 
-The already versioned 0.1.0 packages use the separate first-publication bootstrap
-described below. Do not create a 0.1.1 bump solely for release-tooling changes
-made before that baseline exists in the registry.
-
-After the 0.1.0 bootstrap, a pull request that changes the published behavior of
-`@sumi-os/corpus-contract` or `@sumi-os/docs-mcp` runs `pnpm changeset` and records
-the affected package, semver impact, and factual release note. The packages have
-independent versions; select both only when a contract change also changes MCP
-behavior or compatibility. Documentation-only, test-only, repository-tooling,
-and private Web changes do not require an empty changeset.
+A pull request that changes the published behavior of a package runs
+`pnpm changeset` and records the affected package, semver impact, and factual
+release note using the current workspace manifests. Package identities and
+registry provenance must be reconciled with the external release harness before
+promotion. Packages have independent versions; select both only when a contract
+change also changes MCP behavior or compatibility. Documentation-only, test-only,
+repository-tooling, and private Web changes do not require an empty changeset.
 
 When release intent reaches `main`, the `Release intent` workflow maintains one
 reviewed version pull request. It may update public package versions, internal
@@ -83,16 +82,9 @@ never rebuilds the old artifact. The first site publication requires an
 explicit manual dispatch with `bootstrap` confirmed because no prior artifact
 exists.
 
-This production workflow does not publish the npm package, Windows executable,
-Git tag, or GitHub Release.
-
-The first npm publication is a separate bootstrap operation. It requires proven
-control of the `@sumi-os` scope and two-factor authentication, and publishes the
-exact accepted corpus-contract tarball before the exact accepted MCP tarball.
-Subsequent releases use a protected npm trusted publisher with staged publishing
-and human approval. Neither path may rebuild the accepted tarballs or use an
-unreviewed long-lived registry write token.
-
-`changeset publish` is not part of either path. A publisher must consume the
-accepted tarballs and verify their commit and checksums; it must not rebuild them
-from the version pull request.
+This production workflow does not publish packages, a Windows executable, a Git
+tag, or a GitHub Release. Package publication is a separate promotion operation
+owned by the external release harness. That operation must consume the exact
+accepted tarballs, verify their commit and checksums, and apply its own registry
+authentication, two-factor/trusted-publisher, approval, and rollback gates. It
+must not rebuild accepted tarballs from the version pull request.

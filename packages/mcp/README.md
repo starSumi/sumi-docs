@@ -7,9 +7,11 @@ starts the process and exchanges JSON-RPC on stdin/stdout. It also exposes the
 same four tools over stateless Streamable HTTP for an explicitly configured
 remote or HTTP deployment.
 
-Source is hosted at [GitHub](https://github.com/starSumi/sumi-docs). No npm
-package or GitHub Release has been published for pre-release `0.1.0`; run the
-checkout locally or build the documented executable artifact.
+Source is hosted at [GitHub](https://github.com/starSumi/sumi-docs). Package
+publication and supported release artifacts are separate from this checkout.
+Before consuming a published package or binary, verify its external registry or
+release provenance; otherwise run this checkout locally or build the documented
+executable artifact.
 
 ## Quick start
 
