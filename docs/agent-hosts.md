@@ -13,8 +13,11 @@ pnpm run build
 node packages/mcp/dist/index.js doctor --json
 ```
 
-The repository then exposes the same stdio server through each host's native,
-reviewable project configuration.
+The repository then exposes the same **stdio-first** server through each
+host's native, reviewable project configuration. For local agents, stdio is
+the product contract: the host starts one MCP child process and exchanges
+JSON-RPC on its stdin/stdout. The server writes diagnostics to stderr and does
+not require a local HTTP listener.
 
 | Host        | Project configuration | Trust behavior                                                 |
 | ----------- | --------------------- | -------------------------------------------------------------- |
@@ -30,6 +33,20 @@ the compiled entry without a package-manager stdout wrapper.
 After changing configuration or rebuilding the MCP package, restart the MCP
 server in the host. The server keeps one process-local, read-only corpus
 snapshot and does not live reload.
+
+## Local stdio versus remote HTTP
+
+The compiled command in the table above is the canonical local integration:
+
+```text
+host -> child process stdin/stdout -> Sumi-Docs-MCP -> read-only corpus snapshot
+```
+
+`--transport streamable-http` is a separate deployment surface for an
+explicitly configured HTTP client or remote service. It does not change the
+local host configuration, and it must not be introduced merely because a
+browser preview exists. A preview URL is a human-facing projection, not the
+agent transport.
 
 ## Project Skills and direct MCP use
 
@@ -54,7 +71,7 @@ MCP server limits its own four-tool surface; it does not grant, revoke, or
 replace the agent host's filesystem permissions or sandbox.
 
 The agent host is the MCP client. For a remote deployment, a host with
-Streamable HTTP support connects to the service URL such as
+explicit Streamable HTTP support connects to the service URL such as
 `https://mcp.example.com/mcp` instead of launching a local process. The tool
 names, strict schemas, initialization instructions, and corpus identity remain
 the same.

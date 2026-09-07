@@ -13,7 +13,9 @@ pnpm run build
 node packages/mcp/dist/index.js doctor --json
 ```
 
-之后，仓库通过各宿主原生、可审阅的项目配置提供同一个 stdio 服务。
+之后，仓库通过各宿主原生、可审阅的项目配置提供同一个以 **stdio 优先** 的服务。
+对本地 Agent 而言，stdio 就是产品契约：宿主启动一个 MCP 子进程，通过它的
+stdin/stdout 交换 JSON-RPC。服务把诊断信息写入 stderr，不需要本地 HTTP listener。
 
 | 宿主        | 项目配置             | 信任行为                                         |
 | ----------- | -------------------- | ------------------------------------------------ |
@@ -27,6 +29,18 @@ node packages/mcp/dist/index.js doctor --json
 
 修改配置或重新构建 MCP package 后，在宿主中重启 MCP 服务。每个服务进程只保留一个
 只读语料快照，不进行 live reload。
+
+## 本地 stdio 与远程 HTTP
+
+上表中的编译命令是本地集成的规范路径：
+
+```text
+宿主 -> 子进程 stdin/stdout -> Sumi-Docs-MCP -> 只读语料快照
+```
+
+`--transport streamable-http` 是为显式配置的 HTTP client 或远程服务提供的独立部署面。
+它不会改变本地宿主配置，也不应仅因为存在浏览器 preview 就引入。Preview URL 面向人，
+不是 Agent transport。
 
 ## 项目级 Skill 与直接使用 MCP
 
@@ -45,7 +59,7 @@ node packages/mcp/dist/index.js doctor --json
 搜索文档文件。实现改动仍以当前源码和测试为准。MCP 服务只约束自身的四工具表面，
 不会授予、撤销或取代 Agent 宿主的文件系统权限与 sandbox。
 
-Agent 宿主就是 MCP client。远程部署时，支持 Streamable HTTP 的宿主直接连接
+Agent 宿主就是 MCP client。远程部署时，显式支持 Streamable HTTP 的宿主直接连接
 `https://mcp.example.com/mcp` 这类服务 URL，不再启动本地进程。工具名称、严格 schema、
 初始化 instructions 与语料 identity 保持一致。
 

@@ -5,14 +5,17 @@
 Sumi Docs 将一套经过评审的文档语料发布给两类使用者：
 
 - 人通过 Astro 和 Starlight 网站浏览；
-- Agent 通过只读 MCP 服务器查询同一套语料。
+- 本地 Agent 通过 stdio 上的只读 MCP 服务器查询同一套语料。
 
 经过审阅的根 `docs/` 树与 content catalog 是语义事实源。Web 站点和 MCP 服务是可独立
 寻址的投影，Agent 宿主是 MCP client。
 
 [源码仓库](https://github.com/starSumi/sumi-docs)和
-[文档站](https://starsumi.github.io/sumi-docs/)已公开并处于持续开发阶段。目前
-尚未发布 npm package、带 tag 的 GitHub Release 或受支持的二进制文件。
+[文档站](https://starsumi.github.io/sumi-docs/)已公开并处于持续开发阶段。第一次公开的
+npm bootstrap 在 2026-08-23 使用 `@sumi-labs` scope 发布了
+`corpus-contract@0.1.0` 和 `docs-mcp@0.1.0`。当前 checkout 的 package manifest 仍使用
+历史 `@sumi-os/*` scope，它不是已发布的包身份；安装或提升 package 前请阅读
+[发布](docs/zh-cn/releasing.md)。当前 checkout 尚未发布受支持的二进制文件。
 
 ## 前置要求
 
@@ -41,6 +44,11 @@ pnpm --filter @sumi-os/docs-web dev
 打开 `http://127.0.0.1:4321`。Codex、Claude Code 和 VS Code 的项目适配器见
 [Agent 宿主集成](docs/zh-cn/agent-hosts.md)。它们无需可选的维护 Skill，即可暴露
 四个 MCP 工具。
+
+本地 Agent 集成以 stdio 为默认契约。宿主启动编译后的 MCP 进程，通过子进程的
+stdin/stdout 交换 JSON-RPC 消息，诊断信息写入 stderr，不需要本地 HTTP 端口。
+Streamable HTTP 是显式配置的远程或 HTTP client 部署面；它不是本地 Agent 的默认
+传输，也不是 stdio 的 fallback。
 
 若要在回环 Streamable HTTP endpoint 上提供同一语料：
 
@@ -74,15 +82,15 @@ docs/                       产品手册和默认语料
 .agents/skills/             可选的项目使用与贡献工作流
 ```
 
-| 模式              | 命令                                                                | 用途                               |
-| ----------------- | ------------------------------------------------------------------- | ---------------------------------- |
-| Web 开发          | `pnpm --filter @sumi-os/docs-web dev`                               | 支持热更新的本地网站               |
-| MCP 开发          | `pnpm --filter @sumi-os/docs-mcp dev`                               | 针对示例语料运行 TypeScript 服务器 |
-| 生产构建          | `pnpm run build`                                                    | 构建契约、MCP 和静态网站           |
-| 编译后 MCP        | `node packages/mcp/dist/index.js serve`                             | 通过 stdio 提供自动发现的项目语料  |
-| 远程 MCP endpoint | `node packages/mcp/dist/index.js serve --transport streamable-http` | 在回环 HTTP 提供同一语料           |
-| 验证              | `pnpm run verify`                                                   | 运行 package 质量、测试和依赖门禁  |
-| 跨产品验证        | `pnpm run verify:integration`                                       | 通过 MCP 验证 Web 生成的语料       |
+| 模式              | 命令                                                                | 用途                                                 |
+| ----------------- | ------------------------------------------------------------------- | ---------------------------------------------------- |
+| Web 开发          | `pnpm --filter @sumi-os/docs-web dev`                               | 支持热更新的本地网站                                 |
+| MCP 开发          | `pnpm --filter @sumi-os/docs-mcp dev`                               | 针对示例语料运行 TypeScript 服务器                   |
+| 生产构建          | `pnpm run build`                                                    | 构建契约、MCP 和静态网站                             |
+| 编译后 MCP        | `node packages/mcp/dist/index.js serve`                             | 通过 stdio 提供自动发现的项目语料（本地 Agent 默认） |
+| 远程 MCP endpoint | `node packages/mcp/dist/index.js serve --transport streamable-http` | 显式的 Streamable HTTP 部署面                        |
+| 验证              | `pnpm run verify`                                                   | 运行 package 质量、测试和依赖门禁                    |
+| 跨产品验证        | `pnpm run verify:integration`                                       | 通过 MCP 验证 Web 生成的语料                         |
 
 本地运行与默认的 Pages-only 发布不要求运行时 secret。只有构建网站发布候选时才要求
 `SITE_URL`。启用可选的生产 Streamable HTTP 服务前，必须在受保护的 `production-mcp`

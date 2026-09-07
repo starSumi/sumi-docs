@@ -2,13 +2,17 @@
 
 Sumi-Docs-MCP is a read-only MCP server for Markdown, MDX, and OpenAPI
 documentation stored in a local directory, a sealed local v2 projection, or a
-remote HTTPS manifest. It exposes the same four tools over local stdio or
-stateless Streamable HTTP: list documents, search by keyword, fetch one
-document, and retrieve an OpenAPI specification.
+remote HTTPS manifest. Its canonical local-agent transport is stdio: the host
+starts the process and exchanges JSON-RPC on stdin/stdout. It also exposes the
+same four tools over stateless Streamable HTTP for an explicitly configured
+remote or HTTP deployment.
 
-Source is hosted at [GitHub](https://github.com/starSumi/sumi-docs). No npm
-package or GitHub Release has been published for pre-release `0.1.0`; run the
-checkout locally or build the documented executable artifact.
+Source is hosted at [GitHub](https://github.com/starSumi/sumi-docs). The first
+public npm bootstrap was published as `@sumi-labs/docs-mcp@0.1.0`; this checkout's
+manifest is still named `@sumi-os/docs-mcp`, which is not that registry identity.
+Before using a published package, verify the scope and accepted release
+provenance in [Releasing](../../docs/releasing.md). Otherwise run this checkout
+locally or build the documented executable artifact.
 
 ## Quick start
 
@@ -22,7 +26,7 @@ pnpm run example:smoke
 The smoke test builds the server, starts a real stdio child process, and verifies
 all four tools against the checked-in corpus in `examples/basic/`.
 
-Start the same corpus for an MCP client:
+Start the same corpus for a local MCP client over stdio:
 
 ```powershell
 pnpm run build
@@ -55,7 +59,8 @@ are rejected. Use `--config <path>` to select a different file explicitly.
 The process uses stdout for JSON-RPC. Diagnostics go to stderr. It is normal for
 the process to wait silently until a client sends a request. `--verbose` adds
 sanitized, one-line lifecycle events to stderr without exposing source paths or
-URLs.
+URLs. A browser preview is a separate human-facing route and is not a
+replacement for this stdio MCP transport.
 
 For client configuration, start from
 [`examples/clients/launcher-template.json`](examples/clients/launcher-template.json),
@@ -93,17 +98,17 @@ pnpm run preview:docs -- --docs ./product-docs --port 4173
 
 ## Commands
 
-| Purpose                         | Command                                            | Result                               |
-| ------------------------------- | -------------------------------------------------- | ------------------------------------ |
-| Run the example from TypeScript | `pnpm run dev`                                     | stdio server using `examples/basic/` |
-| Restart on source changes       | `pnpm run dev:watch`                               | development-only stdio server        |
-| Preview clickable local URLs    | `pnpm run preview:docs`                            | loopback-only Markdown preview       |
-| Validate the example end to end | `pnpm run example:smoke`                           | build plus five MCP requests         |
-| Build the Node.js distribution  | `pnpm run build`                                   | `dist/`                              |
-| Run the built example           | `pnpm start`                                       | stdio server from `dist/`            |
-| Build a standalone executable   | `pnpm run build:sea`                               | `artifacts/bin/sumi-docs-mcp.exe`    |
-| Run quality checks              | `pnpm run lint`, `pnpm run typecheck`, `pnpm test` | static checks and tests              |
-| Diagnose a project corpus       | `node dist/index.js doctor --json`                 | read-only resolution and load report |
+| Purpose                         | Command                                            | Result                                     |
+| ------------------------------- | -------------------------------------------------- | ------------------------------------------ |
+| Run the example from TypeScript | `pnpm run dev`                                     | local stdio server using `examples/basic/` |
+| Restart on source changes       | `pnpm run dev:watch`                               | development-only stdio server              |
+| Preview clickable local URLs    | `pnpm run preview:docs`                            | loopback-only Markdown preview             |
+| Validate the example end to end | `pnpm run example:smoke`                           | build plus five MCP requests               |
+| Build the Node.js distribution  | `pnpm run build`                                   | `dist/`                                    |
+| Run the built example           | `pnpm start`                                       | stdio server from `dist/`                  |
+| Build a standalone executable   | `pnpm run build:sea`                               | `artifacts/bin/sumi-docs-mcp.exe`          |
+| Run quality checks              | `pnpm run lint`, `pnpm run typecheck`, `pnpm test` | static checks and tests                    |
+| Diagnose a project corpus       | `node dist/index.js doctor --json`                 | read-only resolution and load report       |
 
 To serve another corpus, invoke the CLI directly:
 
@@ -140,7 +145,8 @@ declared in the manifest, so `--openapi` is directory-only. See
 and network limits.
 
 The source URL above changes where the server reads documents; it does not make
-the MCP endpoint remote. To expose the same read-only core on loopback:
+the MCP endpoint remote. To expose the same read-only core through the separate
+Streamable HTTP deployment surface on loopback:
 
 ```powershell
 node dist/index.js serve https://content.example.com/product/_mcp/v2/current.json --base-url https://docs.example.com/product/ --transport streamable-http --http-host 127.0.0.1 --http-port 3000
@@ -178,6 +184,8 @@ The server has no client or session state. Stdio builds one process-local,
 read-only corpus snapshot from the selected directory or manifest on the first
 content tool call. Streamable HTTP loads the same snapshot before accepting
 traffic so `/readyz` can identify it. Source changes require a process restart.
+For local agent integrations, use stdio; HTTP requires an explicit endpoint
+configuration and does not alter the read-only contract.
 
 ## Configuration model
 

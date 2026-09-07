@@ -5,7 +5,8 @@ English | [简体中文](README.zh-CN.md)
 Sumi Docs publishes one reviewed documentation corpus for two consumers:
 
 - people browse an Astro and Starlight website;
-- agents query the same corpus through a read-only MCP server.
+- local agents query the same corpus through a read-only MCP server over
+  stdio.
 
 The reviewed root `docs/` tree and content catalog are the semantic source of
 truth. The Web site and MCP server are independently addressable projections;
@@ -13,8 +14,12 @@ an agent host is the MCP client.
 
 The [source repository](https://github.com/starSumi/sumi-docs) and
 [documentation site](https://starsumi.github.io/sumi-docs/) are public and
-under active development. No npm package, tagged GitHub Release, or supported
-binary has been published.
+under active development. The first public npm bootstrap was published under
+`@sumi-labs` on 2026-08-23 (`corpus-contract@0.1.0` and `docs-mcp@0.1.0`).
+This checkout's package manifests still use the historical `@sumi-os/*` scope,
+which is not the published package identity; see [Releasing](docs/releasing.md)
+before installing or promoting a package. No supported binary has been
+published by this checkout.
 
 ## Prerequisites
 
@@ -44,6 +49,12 @@ pnpm --filter @sumi-os/docs-web dev
 Open `http://127.0.0.1:4321`. Codex, Claude Code, and VS Code project adapters
 are described in [Agent host integration](docs/agent-hosts.md). They expose the
 four MCP tools without requiring the optional maintainer Skill.
+
+Local agent integrations are stdio-first. The host launches the compiled MCP
+process and exchanges JSON-RPC messages on the child process's stdin/stdout;
+diagnostics stay on stderr and no local HTTP port is required. Streamable HTTP
+is a separate deployment surface for an explicitly configured remote or HTTP
+client; it is not the local agent default or a fallback transport.
 
 To expose the same corpus on a loopback Streamable HTTP endpoint:
 
@@ -80,15 +91,15 @@ docs/                       product handbook and default corpus
 .agents/skills/             optional project usage and contribution workflows
 ```
 
-| Mode                     | Command                                                             | Purpose                                        |
-| ------------------------ | ------------------------------------------------------------------- | ---------------------------------------------- |
-| Web development          | `pnpm --filter @sumi-os/docs-web dev`                               | Local browser site with reload                 |
-| MCP development          | `pnpm --filter @sumi-os/docs-mcp dev`                               | TypeScript server against its example corpus   |
-| Production build         | `pnpm run build`                                                    | Build contract, MCP, and static site           |
-| Compiled MCP             | `node packages/mcp/dist/index.js serve`                             | Serve the discovered project corpus over stdio |
-| Remote MCP endpoint      | `node packages/mcp/dist/index.js serve --transport streamable-http` | Serve the same corpus on loopback HTTP         |
-| Validation               | `pnpm run verify`                                                   | Package quality, tests, and dependency gates   |
-| Cross-product validation | `pnpm run verify:integration`                                       | Exercise the generated Web corpus through MCP  |
+| Mode                     | Command                                                             | Purpose                                                              |
+| ------------------------ | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Web development          | `pnpm --filter @sumi-os/docs-web dev`                               | Local browser site with reload                                       |
+| MCP development          | `pnpm --filter @sumi-os/docs-mcp dev`                               | TypeScript server against its example corpus                         |
+| Production build         | `pnpm run build`                                                    | Build contract, MCP, and static site                                 |
+| Compiled MCP             | `node packages/mcp/dist/index.js serve`                             | Serve the discovered project corpus over stdio (local agent default) |
+| Remote MCP endpoint      | `node packages/mcp/dist/index.js serve --transport streamable-http` | Explicit Streamable HTTP deployment                                  |
+| Validation               | `pnpm run verify`                                                   | Package quality, tests, and dependency gates                         |
+| Cross-product validation | `pnpm run verify:integration`                                       | Exercise the generated Web corpus through MCP                        |
 
 Local operation and the default Pages-only publication require no runtime
 secrets. `SITE_URL` is required only for a release-site candidate. Enabling the
