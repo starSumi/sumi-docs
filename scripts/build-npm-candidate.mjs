@@ -18,7 +18,17 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = resolve(SCRIPT_DIR, "..");
 const ARTIFACTS_ROOT = join(REPOSITORY_ROOT, "artifacts");
 const FULL_COMMIT = /^[0-9a-f]{40}$/u;
+const EXACT_SEMVER =
+  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
 const PUBLIC_REGISTRY = "https://registry.npmjs.org/";
+const CONTRACT_NAME = "@sumi-labs/corpus-contract";
+const MCP_NAME = "@sumi-labs/docs-mcp";
+const DEPENDENCY_FIELDS = [
+  "dependencies",
+  "optionalDependencies",
+  "peerDependencies",
+  "devDependencies",
+];
 
 function fail(message) {
   throw new Error(message);
@@ -70,6 +80,26 @@ function readJson(path) {
 
 export function validatePublishMetadata(contract, mcp) {
   const errors = [];
+  if (contract.name !== CONTRACT_NAME) {
+    errors.push(`Corpus contract must be named ${CONTRACT_NAME}.`);
+  }
+  if (mcp.name !== MCP_NAME) {
+    errors.push(`MCP package must be named ${MCP_NAME}.`);
+  }
+  for (const [label, packageJson] of [
+    ["corpus contract", contract],
+    ["MCP", mcp],
+  ]) {
+    if (!EXACT_SEMVER.test(String(packageJson.version ?? ""))) {
+      errors.push(`${label} package must declare an exact semver version.`);
+    }
+    const serialized = JSON.stringify(packageJson);
+    if (serialized.includes("@sumi-os/")) {
+      errors.push(
+        `${label} package metadata contains the retired @sumi-os scope.`,
+      );
+    }
+  }
   for (const [label, packageJson] of [
     ["corpus contract", contract],
     ["MCP", mcp],
@@ -95,7 +125,7 @@ export function validatePublishMetadata(contract, mcp) {
   if (!contract.files?.includes("LICENSE") || !mcp.files?.includes("LICENSE")) {
     errors.push("Both public packages must include their license file.");
   }
-  if (mcp.dependencies?.["@sumi-os/corpus-contract"] !== "workspace:*") {
+  if (mcp.dependencies?.[CONTRACT_NAME] !== "workspace:*") {
     errors.push("MCP source dependency must use the workspace protocol.");
   }
   return errors;
@@ -207,6 +237,20 @@ function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+function assertNoWorkspaceProtocol(packageJson, packageName) {
+  for (const field of DEPENDENCY_FIELDS) {
+    const dependencies = packageJson[field];
+    if (!dependencies || typeof dependencies !== "object") continue;
+    for (const [name, version] of Object.entries(dependencies)) {
+      if (typeof version === "string" && version.startsWith("workspace:")) {
+        fail(
+          `${packageName} tarball retains workspace protocol for ${name}: ${version}.`,
+        );
+      }
+    }
+  }
+}
+
 function assertPackedPackage(tarball, expected, contractVersion) {
   const packageJson = JSON.parse(
     tar(["-xOf", tarball, "package/package.json"]),
@@ -235,11 +279,33 @@ function assertPackedPackage(tarball, expected, contractVersion) {
   if (!members.has("package/LICENSE")) {
     fail(`${expected.name} tarball does not contain LICENSE.`);
   }
+  assertNoWorkspaceProtocol(packageJson, expected.name);
+  if (JSON.stringify(packageJson).includes("@sumi-os/")) {
+    fail(`${expected.name} tarball contains the retired @sumi-os scope.`);
+  }
   if (
-    expected.name === "@sumi-os/docs-mcp" &&
-    packageJson.dependencies?.["@sumi-os/corpus-contract"] !== contractVersion
+    expected.name === MCP_NAME &&
+    packageJson.dependencies?.[CONTRACT_NAME] !== contractVersion
   ) {
     fail("The MCP tarball must pin the packed corpus contract version.");
+  }
+  if (expected.name === MCP_NAME) {
+    const runtimeFiles = [...members].filter((member) =>
+      /^package\/dist\/.*\.js$/u.test(member),
+    );
+    let importsContract = false;
+    for (const member of runtimeFiles) {
+      const source = tar(["-xOf", tarball, member]);
+      if (source.includes("@sumi-os/")) {
+        fail(
+          `${expected.name} runtime still imports the retired @sumi-os scope.`,
+        );
+      }
+      importsContract ||= source.includes(CONTRACT_NAME);
+    }
+    if (!importsContract) {
+      fail(`${expected.name} runtime does not import ${CONTRACT_NAME}.`);
+    }
   }
 }
 
@@ -265,10 +331,7 @@ function smokeConsumer(contractTarball, mcpTarball, version) {
     );
     const versionOutput = run(
       process.execPath,
-      [
-        join(consumer, "node_modules/@sumi-os/docs-mcp/dist/index.js"),
-        "--version",
-      ],
+      [join(consumer, `node_modules/${MCP_NAME}/dist/index.js`), "--version"],
       { cwd: consumer, capture: true },
     ).trim();
     if (versionOutput !== version) {
@@ -279,7 +342,7 @@ function smokeConsumer(contractTarball, mcpTarball, version) {
       [
         "--input-type=module",
         "--eval",
-        "await import('@sumi-os/corpus-contract'); await import('@sumi-os/docs-mcp');",
+        `await import('${CONTRACT_NAME}'); await import('${MCP_NAME}');`,
       ],
       { cwd: consumer, capture: true },
     );

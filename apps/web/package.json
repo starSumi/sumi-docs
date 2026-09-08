@@ -1,5 +1,5 @@
 {
-  "name": "@sumi-os/docs-web",
+  "name": "@sumi-labs/docs-web",
   "version": "0.1.0",
   "description": "Bilingual Astro and Starlight handbook with a machine-readable MCP projection.",
   "private": true,
@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "@astrojs/starlight": "^0.41.9",
-    "@sumi-os/corpus-contract": "workspace:*",
+    "@sumi-labs/corpus-contract": "workspace:*",
     "astro": "^7.2.9",
     "sharp": "^0.35.4"
   },

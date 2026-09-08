@@ -344,7 +344,7 @@ export function validateWorkflowPolicy({
     contractBuildIndex < 0 ||
     projectionIndex <= contractBuildIndex ||
     String(containerSteps[contractBuildIndex]?.run ?? "").trim() !==
-      "pnpm --filter @sumi-os/corpus-contract build"
+      "pnpm --filter @sumi-labs/corpus-contract build"
   ) {
     errors.push(
       "CI container must build the corpus contract before machine projection.",
@@ -777,7 +777,7 @@ export function validateWorkflowPolicy({
     buildTuple?.env?.PUBLIC_MCP_READINESS_URL !==
       "${{ needs.remote-preflight.outputs.readiness-url }}" ||
     !buildTupleRun.includes("pnpm run verify") ||
-    !buildTupleRun.includes("@sumi-os/docs-web verify:mcp") ||
+    !buildTupleRun.includes("@sumi-labs/docs-web verify:mcp") ||
     !buildTupleRun.includes("test ! -e apps/web/dist/_mcp/server.json") ||
     !buildTupleRun.includes("test -f apps/web/dist/_mcp/server.json") ||
     !buildImageRun.includes("--build-context corpus=apps/web/dist/_mcp") ||

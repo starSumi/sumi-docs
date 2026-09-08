@@ -18,7 +18,7 @@ import {
   MAX_DOCUMENTS,
   canonicalJson,
   describeIntegrity,
-} from "@sumi-os/corpus-contract";
+} from "@sumi-labs/corpus-contract";
 import { DocsVault } from "../../src/vfs/DocsVault.js";
 import { writeV2Projection } from "../helpers/v2-projection.js";
 

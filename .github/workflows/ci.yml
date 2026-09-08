@@ -168,7 +168,7 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build the corpus contract
-        run: pnpm --filter @sumi-os/corpus-contract build
+        run: pnpm --filter @sumi-labs/corpus-contract build
 
       - name: Build the sealed machine projection once
         run: |

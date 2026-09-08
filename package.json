@@ -1,5 +1,5 @@
 {
-  "name": "@sumi-os/docs-workspace",
+  "name": "@sumi-labs/docs-workspace",
   "version": "0.1.0",
   "private": true,
   "description": "Human and machine-readable Sumi documentation product workspace.",

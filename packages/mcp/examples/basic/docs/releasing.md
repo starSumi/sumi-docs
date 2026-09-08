@@ -18,7 +18,7 @@ pnpm run verify:integration
 pnpm run smoke:mcp
 pnpm run pack:mcp
 pnpm run build:sea
-pnpm --filter @sumi-os/docs-mcp example:smoke --executable artifacts/bin/sumi-docs-mcp.exe
+pnpm --filter @sumi-labs/docs-mcp example:smoke --executable artifacts/bin/sumi-docs-mcp.exe
 pnpm run benchmark:cold-start --iterations 100 --executable artifacts/bin/sumi-docs-mcp.exe
 ```
 
@@ -33,16 +33,21 @@ single-sample release thresholds.
 
 ## Release intent and version pull requests
 
-The already versioned 0.1.0 packages use the separate first-publication bootstrap
-below. Do not create a 0.1.1 bump solely for release-tooling changes made before
-that baseline exists in the registry.
+This repair candidate sets the source package baseline to
+`@sumi-labs/corpus-contract@0.1.1` and `@sumi-labs/docs-mcp@0.1.2`, the first
+versions after the broken scope migration. Treat these as an explicit bootstrap
+candidate until registry readback proves both exact versions. Do not reopen the
+superseded release intent or propose either version again. Before a new version
+pull request, read the public registry version lists and require every proposed
+version to be strictly greater than its published predecessor. A stale
+changeset or release pull request is superseded rather than merged.
 
-After the bootstrap, public package behavior changes include a changeset in the
-contributing pull request. The contract and MCP packages remain independently
-versioned; select both when a contract change also changes MCP behavior or
-compatibility. The `Release intent` workflow may run `changeset version` to
-maintain a reviewed version pull request. It has no package-publication, tag,
-candidate-build, or protected-environment authority.
+After this reconciliation, public package behavior changes include a changeset
+in the contributing pull request. The contract and MCP packages remain
+independently versioned; select both when a contract change also changes MCP
+behavior or compatibility. The `Release intent` workflow may run `changeset
+version` to maintain a reviewed version pull request. It has no
+package-publication, tag, candidate-build, or protected-environment authority.
 
 Merge the version pull request before constructing the acceptance candidate.
 The candidate commit, tarball digests, and human acceptance then become the
@@ -67,8 +72,8 @@ commit-bound artifact retained for 14 days:
 - `sumi-docs-web-<commit>.zip`;
 - `sumi-docs-web-<commit>.zip.sha256`;
 - `npm/npm-candidate.json`;
-- `npm/sumi-os-corpus-contract-<version>.tgz` and its SHA-256 sidecar;
-- `npm/sumi-os-docs-mcp-<version>.tgz` and its SHA-256 sidecar;
+- `npm/sumi-labs-corpus-contract-<version>.tgz` and its SHA-256 sidecar;
+- `npm/sumi-labs-docs-mcp-<version>.tgz` and its SHA-256 sidecar;
 - `cold-start.json`.
 
 Both ZIP archives contain the project license, deterministic third-party notices,
@@ -112,7 +117,7 @@ artifact; they do not replace operating-system code signing.
 ## Promotion boundary
 
 Do not create or push a release tag from this procedure. The first npm release
-is a separate bootstrap operation: prove control of the `@sumi-os` scope and
+is a separate bootstrap operation: prove control of the `@sumi-labs` scope and
 two-factor authentication, publish the exact accepted corpus-contract tarball
 before the exact accepted MCP tarball, and read back registry integrity and
 metadata. Do not rebuild either package during promotion.

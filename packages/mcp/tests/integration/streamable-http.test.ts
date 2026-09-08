@@ -14,6 +14,7 @@ import {
   serveStreamableHttp,
 } from "../../src/mcp/streamable-http.js";
 import { DocsVault } from "../../src/vfs/DocsVault.js";
+import { VERSION } from "../../src/version.js";
 
 const requestMeta = {
   [PROTOCOL_VERSION_META_KEY]: "2026-07-28",
@@ -103,7 +104,7 @@ test("Streamable HTTP exposes the same stateless tool surface", async () => {
     assert.deepEqual(await health.json(), {
       status: "ok",
       service: "sumi-docs-mcp",
-      version: "0.1.0",
+      version: VERSION,
       protocolVersion: "2026-07-28",
       transport: "streamable-http",
       buildRevision: "0123456789abcdef0123456789abcdef01234567",
@@ -115,7 +116,7 @@ test("Streamable HTTP exposes the same stateless tool surface", async () => {
     assert.deepEqual(await readiness.json(), {
       status: "ready",
       service: "sumi-docs-mcp",
-      version: "0.1.0",
+      version: VERSION,
       protocolVersion: "2026-07-28",
       transport: "streamable-http",
       buildRevision: "0123456789abcdef0123456789abcdef01234567",

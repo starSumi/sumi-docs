@@ -1,7 +1,7 @@
 # Sumi Docs Web
 
 Human-facing documentation for Sumi-Docs-MCP, built with Astro and Starlight as
-the `@sumi-os/docs-web` workspace package.
+the `@sumi-labs/docs-web` workspace package.
 The site also publishes the strict raw-document manifest consumed by the MCP
 server's remote source mode. The checked-in product, operations, development,
 release, contribution, and integration handbook is the showcase corpus: an MCP
@@ -20,7 +20,7 @@ workspace root:
 
 ```powershell
 pnpm install --frozen-lockfile
-pnpm --filter @sumi-os/docs-web dev
+pnpm --filter @sumi-labs/docs-web dev
 ```
 
 The local site starts at `http://localhost:4321/` by default.
@@ -127,7 +127,7 @@ or GitHub Release.
 
 ## Architecture
 
-Web and MCP share the pure `@sumi-os/corpus-contract` workspace package, while
+Web and MCP share the pure `@sumi-labs/corpus-contract` workspace package, while
 retaining separate parser and trust boundaries. The accepted decisions live in
 `packages/mcp/docs/decisions/`: ADR-0003 defines explicit locale semantics,
 ADR-0006 defines immutable v2 publication, and ADR-0008 defines the pnpm

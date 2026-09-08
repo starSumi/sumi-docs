@@ -20,14 +20,14 @@ publishing pipeline.
 
 Each contract has one versioned authority:
 
-| Contract                    | Authority                                                                                             | Generated or derived surfaces                                         |
-| --------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| MCP protocol and transports | The versioned Model Context Protocol specification and installed official SDK packages                | stdio and Streamable HTTP conformance tests                           |
-| MCP tool arguments          | Strict Zod definitions in `src/mcp/server.ts`                                                         | Runtime validation and the JSON Schema advertised by the official SDK |
-| Corpus manifest wire format | Versioned JSON Schema, canonicalization rules, and conformance fixtures in `@sumi-os/corpus-contract` | TypeScript reference implementation and future language bindings      |
-| TypeScript package API      | Exported TypeScript declarations                                                                      | TypeDoc reference pages                                               |
-| Future Rust package API     | Exported Rust items                                                                                   | `rustdoc` pages, only after a supported Rust implementation exists    |
-| Browser behavior            | Published Web standards, accessibility requirements, and the reviewed content catalog                 | Astro and Starlight output                                            |
+| Contract                    | Authority                                                                                               | Generated or derived surfaces                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| MCP protocol and transports | The versioned Model Context Protocol specification and installed official SDK packages                  | stdio and Streamable HTTP conformance tests                           |
+| MCP tool arguments          | Strict Zod definitions in `src/mcp/server.ts`                                                           | Runtime validation and the JSON Schema advertised by the official SDK |
+| Corpus manifest wire format | Versioned JSON Schema, canonicalization rules, and conformance fixtures in `@sumi-labs/corpus-contract` | TypeScript reference implementation and future language bindings      |
+| TypeScript package API      | Exported TypeScript declarations                                                                        | TypeDoc reference pages                                               |
+| Future Rust package API     | Exported Rust items                                                                                     | `rustdoc` pages, only after a supported Rust implementation exists    |
+| Browser behavior            | Published Web standards, accessibility requirements, and the reviewed content catalog                   | Astro and Starlight output                                            |
 
 The corpus contract targets JSON Schema Draft 2020-12. A future Rust
 implementation must consume the same schemas and fixtures; it must not become a

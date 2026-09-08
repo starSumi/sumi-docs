@@ -44,6 +44,13 @@ This file records user-visible changes. Internal phase notes are retained under
   Unicode lexical search, document lookup, and OpenAPI filtering while keeping
   the Node runtime as the production default.
 
+## 0.1.2 - 2026-09-08
+
+- Reconciled the public package identity under the `@sumi-labs` npm scope.
+- Packed the internal corpus-contract dependency as a concrete published
+  semver so `npx` and clean npm consumers do not receive `workspace:*`.
+- Kept runtime imports on the published `@sumi-labs` scope.
+
 ## 0.1.0 - 2026-08-12
 
 - Implemented Markdown/MDX and OpenAPI parsing.

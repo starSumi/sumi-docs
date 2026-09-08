@@ -306,7 +306,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm run verify
-          pnpm --filter @sumi-os/docs-web verify:mcp
+          pnpm --filter @sumi-labs/docs-web verify:mcp
           if [[ "$REMOTE_ENABLED" = true ]]; then
             test -f apps/web/dist/_mcp/server.json
             jq --arg endpoint "$PUBLIC_MCP_URL" -e \

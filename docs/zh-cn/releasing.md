@@ -23,7 +23,7 @@ manifest 记录受影响的包、semver 影响和客观的发布说明。提升�
 ```powershell
 $env:SITE_URL = "https://docs.example.com"
 $env:BASE_PATH = "/"
-pnpm --filter @sumi-os/docs-web verify:release
+pnpm --filter @sumi-labs/docs-web verify:release
 pnpm run verify:integration
 ```
 

@@ -5,7 +5,7 @@ import {
   createCurrentLocatorV2,
   describeIntegrity,
   sealManifestV2,
-} from "@sumi-os/corpus-contract";
+} from "@sumi-labs/corpus-contract";
 
 const DEFAULT_OPENAPI = JSON.stringify({
   openapi: "3.1.0",

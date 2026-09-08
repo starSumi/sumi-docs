@@ -12,8 +12,8 @@ These instructions apply to the Sumi Docs Web repository.
 - Human locales: English at `/`, Simplified Chinese at `/zh-cn/`
 - Theme modes: light, dark, and automatic system preference
 
-The site is the `@sumi-os/docs-web` workspace package. It shares only the pure
-`@sumi-os/corpus-contract` package with the MCP consumer; it must not import MCP
+The site is the `@sumi-labs/docs-web` workspace package. It shares only the pure
+`@sumi-labs/corpus-contract` package with the MCP consumer; it must not import MCP
 runtime source files or parsers.
 
 ## Content and trust
@@ -38,7 +38,7 @@ The public MCP manifest v1 remains this exact shape at its existing URL:
 Do not add route objects or other fields to v1. Human route mappings remain in
 the generated `sumi-docs-routes.json` verification artifact. The parallel v2
 projection lives under `dist/_mcp/v2/` and uses immutable revision directories;
-schema validation and canonicalization belong to `@sumi-os/corpus-contract`.
+schema validation and canonicalization belong to `@sumi-labs/corpus-contract`.
 
 ## Ownership
 

@@ -29,7 +29,7 @@ It does not parse documents, implement MCP tools, download executable code, or
 maintain a second corpus contract.
 
 The Rust core must consume the language-neutral schemas and fixtures from
-`@sumi-os/corpus-contract`. It is not allowed to create Rust-only manifest,
+`@sumi-labs/corpus-contract`. It is not allowed to create Rust-only manifest,
 route, error, or tool authorities. Node/SEA stays available as the accepted
 fallback until the parity, security, lifecycle, distribution, and calibrated
 performance gates in ADR-0015 are complete.

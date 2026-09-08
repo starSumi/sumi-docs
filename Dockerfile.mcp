@@ -17,17 +17,17 @@ COPY packages/corpus-contract/package.json packages/corpus-contract/package.json
 COPY packages/mcp/package.json packages/mcp/package.json
 
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm --filter @sumi-os/docs-mcp... install \
+    pnpm --filter @sumi-labs/docs-mcp... install \
       --frozen-lockfile \
       --ignore-scripts
 
 COPY packages/corpus-contract packages/corpus-contract
 COPY packages/mcp packages/mcp
 
-RUN pnpm --filter @sumi-os/corpus-contract build \
-    && pnpm --filter @sumi-os/docs-mcp build \
+RUN pnpm --filter @sumi-labs/corpus-contract build \
+    && pnpm --filter @sumi-labs/docs-mcp build \
     && pnpm --ignore-scripts \
-      --filter @sumi-os/docs-mcp deploy \
+      --filter @sumi-labs/docs-mcp deploy \
       --prod \
       --legacy \
       /opt/sumi-docs
@@ -39,7 +39,7 @@ ARG VCS_REF=""
 LABEL org.opencontainers.image.title="Sumi Docs MCP" \
       org.opencontainers.image.description="Read-only Sumi Docs MCP server" \
       org.opencontainers.image.source="https://github.com/starSumi/sumi-docs" \
-      org.opencontainers.image.version="0.1.0" \
+      org.opencontainers.image.version="0.1.2" \
       org.opencontainers.image.revision=$VCS_REF \
       org.opencontainers.image.licenses="MIT"
 

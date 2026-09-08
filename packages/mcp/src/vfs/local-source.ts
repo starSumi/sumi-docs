@@ -8,8 +8,11 @@ import {
   assertIntegrity,
   parseCurrentLocatorV2,
   parseLocatedManifestV2,
-} from "@sumi-os/corpus-contract";
-import type { IntegrityDescriptor, ManifestV2 } from "@sumi-os/corpus-contract";
+} from "@sumi-labs/corpus-contract";
+import type {
+  IntegrityDescriptor,
+  ManifestV2,
+} from "@sumi-labs/corpus-contract";
 import { isLocalV2LocatorPath } from "../utils/local-source-path.js";
 
 export interface LocalDocument {

@@ -43,7 +43,8 @@ Complete the pull request template with:
 Use Conventional Commits. Rebase a private topic branch when it falls behind,
 but do not rewrite commits already shared with other contributors.
 
-After the initial 0.1.0 npm bootstrap, run `pnpm changeset` when a pull request
+After the public package baseline has been reconciled (`@sumi-labs/corpus-contract@0.1.1`
+and `@sumi-labs/docs-mcp@0.1.2`), run `pnpm changeset` when a pull request
 changes the published behavior of either public package. Select every affected
 package and write a user-facing release note. Documentation-only, test-only,
 repository-tooling, and private Web changes do not require an empty changeset.

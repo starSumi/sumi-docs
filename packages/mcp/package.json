@@ -1,6 +1,6 @@
 {
-  "name": "@sumi-os/docs-mcp",
-  "version": "0.1.0",
+  "name": "@sumi-labs/docs-mcp",
+  "version": "0.1.2",
   "description": "Read-only MCP server for Markdown, MDX, and OpenAPI documentation.",
   "publishConfig": {
     "access": "public",
@@ -79,7 +79,7 @@
   "dependencies": {
     "@modelcontextprotocol/node": "2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
-    "@sumi-os/corpus-contract": "workspace:*",
+    "@sumi-labs/corpus-contract": "workspace:*",
     "mdast-util-to-string": "^4.0.0",
     "minimist": "^1.2.8",
     "remark": "^15.0.1",

@@ -8,7 +8,7 @@ workspace 根目录执行安装与跨产品命令。
 
 ```powershell
 pnpm install --frozen-lockfile
-pnpm --filter @sumi-os/docs-web dev
+pnpm --filter @sumi-labs/docs-web dev
 ```
 
 面向人的内容位于 workspace 根 `docs/`。经过审阅的
