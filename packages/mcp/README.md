@@ -89,7 +89,11 @@ pnpm run preview:docs
 ```
 
 Then use `http://127.0.0.1:4173/` as `--base-url`. The preview serves the
-checked-in example by default. To preview another corpus:
+checked-in example by default. The root and extensionless document URLs open a
+responsive, styled HTML catalog with navigation and lexical search. Explicit
+`.md` and `.mdx` URLs remain raw Markdown responses for manifest consumers, and
+the preview escapes HTML/JSX/MDX rather than executing it. To preview another
+corpus:
 
 ```powershell
 pnpm run preview:docs -- --docs ./product-docs --port 4173
@@ -101,7 +105,7 @@ pnpm run preview:docs -- --docs ./product-docs --port 4173
 | ------------------------------- | -------------------------------------------------- | ------------------------------------------ |
 | Run the example from TypeScript | `pnpm run dev`                                     | local stdio server using `examples/basic/` |
 | Restart on source changes       | `pnpm run dev:watch`                               | development-only stdio server              |
-| Preview clickable local URLs    | `pnpm run preview:docs`                            | loopback-only Markdown preview             |
+| Preview clickable local URLs    | `pnpm run preview:docs`                            | loopback-only styled HTML catalog          |
 | Validate the example end to end | `pnpm run example:smoke`                           | build plus five MCP requests               |
 | Build the Node.js distribution  | `pnpm run build`                                   | `dist/`                                    |
 | Run the built example           | `pnpm start`                                       | stdio server from `dist/`                  |

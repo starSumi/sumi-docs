@@ -5,6 +5,9 @@ This file records user-visible changes. Internal phase notes are retained under
 
 ## Unreleased
 
+- Made the loopback documentation preview a styled HTML catalog with navigation
+  and search while preserving raw `.md`/`.mdx` routes and escaping untrusted
+  HTML, JSX, and MDX content.
 - Made `--verbose` emit sanitized lifecycle diagnostics on stderr and hardened
   the process smoke check against non-JSON-RPC stdout output.
 - Added reviewed release-intent and version-pull-request automation while

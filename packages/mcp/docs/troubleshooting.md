@@ -61,6 +61,9 @@ document or OpenAPI file.
 The MCP process does not host HTTP pages. Start `pnpm run preview:docs` in a
 separate terminal and keep it running. The preview port must match the port in
 `--base-url`, and both processes must point to the same documentation root.
+Open `/` or an extensionless document URL for the styled HTML view. Use an
+explicit `.md` or `.mdx` URL when a tool needs the original source text. The
+preview is loopback-only and treats HTML, JSX, and MDX as escaped content.
 
 ## SEA build fails
 

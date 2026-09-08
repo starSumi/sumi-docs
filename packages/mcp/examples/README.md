@@ -27,4 +27,6 @@ launcher. Its positional URL is the machine-readable manifest base; its
 To exercise remote source mode without deploying a site, run `pnpm run
 preview:docs` and then launch the MCP server with
 `node dist/index.js serve http://127.0.0.1:4173/`. The preview generates the
-remote manifest and serves the checked-in OpenAPI document.
+remote manifest and serves the checked-in OpenAPI document. Open the root URL
+to browse the styled HTML catalog; explicit `.md` and `.mdx` URLs continue to
+return raw source for the remote manifest loader.
