@@ -83,8 +83,8 @@ node packages/mcp/dist/index.js serve ./apps/web/dist/_mcp/v2/current.json --bas
 
 | 模式           | 入口                                           | 用途                                  |
 | -------------- | ---------------------------------------------- | ------------------------------------- |
-| MCP 源码开发   | `pnpm --filter @sumi-os/docs-mcp dev`          | 使用受版本控制的示例开发 TypeScript   |
-| Web 源码开发   | `pnpm --filter @sumi-os/docs-web dev`          | 运行支持 reload 的本地 Starlight 站点 |
+| MCP 源码开发   | `pnpm --filter @sumi-labs/docs-mcp dev`        | 使用受版本控制的示例开发 TypeScript   |
+| Web 源码开发   | `pnpm --filter @sumi-labs/docs-web dev`        | 运行支持 reload 的本地 Starlight 站点 |
 | Node 分发      | `node packages/mcp/dist/index.js`              | 从本 workspace 运行编译后的 package   |
 | 独立可执行文件 | `packages/mcp/artifacts/bin/sumi-docs-mcp.exe` | 不依赖外部 Node 安装运行              |
 

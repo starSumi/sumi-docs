@@ -22,7 +22,7 @@ version; do not substitute npm.
 - Remote MCP service: use `--transport streamable-http`; keep the default
   loopback bind for development and apply the documented Host, Origin, TLS, and
   public-network gates before deployment.
-- Web development: run `pnpm --filter @sumi-os/docs-web dev` and use the URL
+- Web development: run `pnpm --filter @sumi-labs/docs-web dev` and use the URL
   printed by Astro.
 - Agent host setup: read `docs/agent-hosts.md`, build first, then use the
   checked-in project adapter for the active host.

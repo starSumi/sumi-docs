@@ -34,13 +34,13 @@ npm package / platform package
 
 ### Ownership
 
-| Surface                    | Responsibility                                                                                             | Exclusions                                           |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `@sumi-os/docs-mcp`        | npm metadata, command discovery, platform selection, argument/signal forwarding, fallback policy           | protocol handlers, corpus parsing, runtime downloads |
-| Rust MCP core              | protocol adapter, stdio and Streamable HTTP, bounded loaders, path/integrity checks, diagnostics, shutdown | Web rendering, publication, mutable controller state |
-| `@sumi-os/corpus-contract` | JSON Schemas, canonicalization, fixtures, revision and integrity rules                                     | transport-specific behavior                          |
-| `apps/web`                 | Astro/Starlight rendering, navigation, machine projection, static deployment                               | MCP process lifecycle                                |
-| release workflow           | immutable artifacts, signatures, SBOM, provenance, rollback evidence                                       | runtime behavior changes                             |
+| Surface                      | Responsibility                                                                                             | Exclusions                                           |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `@sumi-labs/docs-mcp`        | npm metadata, command discovery, platform selection, argument/signal forwarding, fallback policy           | protocol handlers, corpus parsing, runtime downloads |
+| Rust MCP core                | protocol adapter, stdio and Streamable HTTP, bounded loaders, path/integrity checks, diagnostics, shutdown | Web rendering, publication, mutable controller state |
+| `@sumi-labs/corpus-contract` | JSON Schemas, canonicalization, fixtures, revision and integrity rules                                     | transport-specific behavior                          |
+| `apps/web`                   | Astro/Starlight rendering, navigation, machine projection, static deployment                               | MCP process lifecycle                                |
+| release workflow             | immutable artifacts, signatures, SBOM, provenance, rollback evidence                                       | runtime behavior changes                             |
 
 The Rust core must consume the language-neutral corpus schemas and fixtures.
 It must preserve the four public tool names, strict input rules, sanitized

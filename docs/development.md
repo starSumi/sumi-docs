@@ -9,7 +9,7 @@ Run installation and cross-product commands from the workspace root.
 
 ```powershell
 pnpm install --frozen-lockfile
-pnpm --filter @sumi-os/docs-web dev
+pnpm --filter @sumi-labs/docs-web dev
 ```
 
 Human-facing content lives in the workspace root `docs/`. The reviewed catalog

@@ -46,7 +46,7 @@ MCP 语料。
 | ------------------- | ------------------------------------------------------------------------------------------------------ |
 | MCP 消息与传输      | 版本化 [Model Context Protocol 规范](https://modelcontextprotocol.io/specification/)和已安装的官方 SDK |
 | 工具参数            | MCP package 中的严格 Zod 定义；官方 SDK 将其发布为 JSON Schema                                         |
-| Corpus manifest     | `@sumi-os/corpus-contract` 中的 Draft 2020-12 schema、canonicalization 与 fixture                      |
+| Corpus manifest     | `@sumi-labs/corpus-contract` 中的 Draft 2020-12 schema、canonicalization 与 fixture                    |
 | TypeScript API 参考 | 导出 declaration 与自动生成的 TypeDoc 页面                                                             |
 | 未来 Rust API 参考  | 只有在受支持的 parity 实现存在后，才以导出 Rust item 与 rustdoc 为准                                   |
 | 浏览器可访问性      | 已发布的 Web 标准与 [WCAG 2.2](https://www.w3.org/TR/WCAG22/)                                          |

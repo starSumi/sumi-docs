@@ -40,8 +40,9 @@ Commits use Conventional Commits and remain independently understandable.
 Generated output, local agent state, and unrelated formatting do not belong in
 the same change.
 
-After the initial 0.1.0 npm bootstrap, a change to published contract or MCP
-behavior includes a changeset for every affected public package. Documentation,
+After the public package baseline has been reconciled (`@sumi-labs/corpus-contract@0.1.1`
+and `@sumi-labs/docs-mcp@0.1.2`), a change to published contract or MCP behavior
+includes a changeset for every affected public package. Documentation,
 tests, repository tooling, and private Web changes do not require an empty
 changeset. Release intent does not authorize publication.
 

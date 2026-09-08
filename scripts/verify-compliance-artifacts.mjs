@@ -210,8 +210,8 @@ function verifyMcp() {
   const noticesPath = join(root, "THIRD_PARTY_NOTICES.txt");
   const nodeLicensePath = join(root, "NODEJS_LICENSE.txt");
   const nodeRuntimeLicense = readNodeRuntimeLicense();
-  const bom = verifyBom(bomPath, "@sumi-os/docs-mcp");
-  const inventory = loadLicenseInventory("@sumi-os/docs-mcp");
+  const bom = verifyBom(bomPath, "@sumi-labs/docs-mcp");
+  const inventory = loadLicenseInventory("@sumi-labs/docs-mcp");
   const artifact = loadMcpArtifact(inventory);
   verifyDependencyGraph(bom, artifact, inventory);
   const nodeComponents = bom.components.filter(
@@ -243,8 +243,8 @@ function verifyWeb() {
   const root = join(complianceRoot, "web");
   const bomPath = join(root, "bom.cdx.json");
   const noticesPath = join(root, "THIRD_PARTY_NOTICES.txt");
-  const bom = verifyBom(bomPath, "@sumi-os/docs-web");
-  const inventory = loadLicenseInventory("@sumi-os/docs-web");
+  const bom = verifyBom(bomPath, "@sumi-labs/docs-web");
+  const inventory = loadLicenseInventory("@sumi-labs/docs-web");
   const artifact = loadWebArtifact(inventory);
   verifyDependencyGraph(bom, artifact, inventory);
   if (

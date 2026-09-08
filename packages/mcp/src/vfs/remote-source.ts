@@ -3,12 +3,12 @@ import {
   parseCurrentLocatorV2,
   parseLocatedManifestV2,
   parseManifestV1,
-} from "@sumi-os/corpus-contract";
+} from "@sumi-labs/corpus-contract";
 import type {
   IntegrityDescriptor,
   ManifestV1,
   ManifestV2,
-} from "@sumi-os/corpus-contract";
+} from "@sumi-labs/corpus-contract";
 import {
   isRemoteDocsSource,
   isRemoteV2LocatorSource,

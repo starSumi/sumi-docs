@@ -26,7 +26,7 @@ CLI. The latest v1 maintenance release is the compatible action line.
 
 Use Changesets 2.31.1 for pull-request release intent, semver calculation,
 package-version updates, internal dependency updates, and package changelogs.
-Keep `@sumi-os/corpus-contract` and `@sumi-os/docs-mcp` independently versioned;
+Keep `@sumi-labs/corpus-contract` and `@sumi-labs/docs-mcp` independently versioned;
 do not configure fixed or linked groups. Private packages are neither versioned
 nor tagged.
 
@@ -58,10 +58,13 @@ change pull requests with release intent
   -> registry and public metadata readback
 ```
 
-The first 0.1.0 publication remains a bootstrap of the already versioned and
-accepted baseline. Changesets must not invent a 0.1.1 bump merely to describe
-pre-bootstrap release-tooling work. Normal changeset collection begins after
-the two 0.1.0 packages exist in the registry.
+The public registry baseline is reconciled independently of a fresh checkout.
+The current source records `@sumi-labs/corpus-contract@0.1.1` and
+`@sumi-labs/docs-mcp@0.1.2`; the release-intent workflow must not propose
+either already published version. Before maintaining a version pull request,
+the release owner reads both registry version lists and rejects any proposal
+that is not strictly greater than the corresponding published version. A stale
+changeset or version pull request is superseded rather than merged.
 
 `changeset publish` is not an approved repository command. The candidate builder
 continues to construct and validate the exact contract and MCP tarballs. A

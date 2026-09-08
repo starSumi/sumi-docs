@@ -122,6 +122,10 @@ test("npm publication is limited to the reviewed contract and MCP packages", () 
 
   assert.equal(root.private, true);
   assert.equal(web.private, true);
+  assert.equal(contract.name, "@sumi-labs/corpus-contract");
+  assert.equal(mcp.name, "@sumi-labs/docs-mcp");
+  assert.match(contract.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u);
+  assert.match(mcp.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u);
 
   for (const packageJson of [contract, mcp]) {
     assert.equal(packageJson.private, undefined);
@@ -135,7 +139,9 @@ test("npm publication is limited to the reviewed contract and MCP packages", () 
   assert.equal(contract.scripts.prepack, "node --run build");
   assert.ok(contract.files.includes("LICENSE"));
   assert.ok(mcp.files.includes("LICENSE"));
-  assert.equal(mcp.dependencies["@sumi-os/corpus-contract"], "workspace:*");
+  assert.equal(mcp.dependencies["@sumi-labs/corpus-contract"], "workspace:*");
+  assert.doesNotMatch(JSON.stringify(contract), /@sumi-os\//u);
+  assert.doesNotMatch(JSON.stringify(mcp), /@sumi-os\//u);
   assert.equal(
     root.scripts["pack:npm-candidate"],
     "node scripts/build-npm-candidate.mjs",
@@ -1022,7 +1028,7 @@ test("active workflows enforce privilege and supersession boundaries", () => {
   weakened.candidate.jobs.build.steps.find(
     (step) => step.name === "Smoke test Windows executable",
   ).run =
-    "pnpm --filter @sumi-os/docs-mcp example:smoke -- --executable artifacts/bin/sumi-docs-mcp.exe";
+    "pnpm --filter @sumi-labs/docs-mcp example:smoke -- --executable artifacts/bin/sumi-docs-mcp.exe";
   weakened.ci.jobs.verify.steps = weakened.ci.jobs.verify.steps.filter(
     (step) => step.name !== "Install the pinned package manager",
   );

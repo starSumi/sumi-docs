@@ -35,7 +35,7 @@ Doctor 默认只报告项目相对路径或外部来源占位符。仅在本地�
 启动面向人的网站：
 
 ```powershell
-pnpm --filter @sumi-os/docs-web dev
+pnpm --filter @sumi-labs/docs-web dev
 ```
 
 打开 `http://127.0.0.1:4321`。Codex、Claude Code 和 VS Code 的项目适配器见
@@ -85,8 +85,8 @@ docs/                       产品手册和默认语料
 
 | 模式              | 命令                                                                | 用途                                                 |
 | ----------------- | ------------------------------------------------------------------- | ---------------------------------------------------- |
-| Web 开发          | `pnpm --filter @sumi-os/docs-web dev`                               | 支持热更新的本地网站                                 |
-| MCP 开发          | `pnpm --filter @sumi-os/docs-mcp dev`                               | 针对示例语料运行 TypeScript 服务器                   |
+| Web 开发          | `pnpm --filter @sumi-labs/docs-web dev`                             | 支持热更新的本地网站                                 |
+| MCP 开发          | `pnpm --filter @sumi-labs/docs-mcp dev`                             | 针对示例语料运行 TypeScript 服务器                   |
 | 生产构建          | `pnpm run build`                                                    | 构建契约、MCP 和静态网站                             |
 | 编译后 MCP        | `node packages/mcp/dist/index.js serve`                             | 通过 stdio 提供自动发现的项目语料（本地 Agent 默认） |
 | 远程 MCP endpoint | `node packages/mcp/dist/index.js serve --transport streamable-http` | 显式的 Streamable HTTP 部署面                        |

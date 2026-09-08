@@ -30,7 +30,7 @@ Build a production candidate with an explicit public origin:
 ```powershell
 $env:SITE_URL = "https://docs.example.com"
 $env:BASE_PATH = "/"
-pnpm --filter @sumi-os/docs-web verify:release
+pnpm --filter @sumi-labs/docs-web verify:release
 pnpm run verify:integration
 ```
 

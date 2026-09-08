@@ -53,7 +53,7 @@ in the same pull request.
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | MCP messages and transports | The versioned [Model Context Protocol specification](https://modelcontextprotocol.io/specification/) and installed official SDK |
 | Tool arguments              | Strict Zod definitions in the MCP package; the official SDK advertises their JSON Schema                                        |
-| Corpus manifests            | Draft 2020-12 schemas, canonicalization, and fixtures in `@sumi-os/corpus-contract`                                             |
+| Corpus manifests            | Draft 2020-12 schemas, canonicalization, and fixtures in `@sumi-labs/corpus-contract`                                           |
 | TypeScript API reference    | Exported declarations and generated TypeDoc pages                                                                               |
 | Future Rust API reference   | Exported Rust items and rustdoc, only after a supported parity implementation exists                                            |
 | Browser accessibility       | Published Web standards and [WCAG 2.2](https://www.w3.org/TR/WCAG22/)                                                           |

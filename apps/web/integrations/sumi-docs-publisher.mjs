@@ -8,7 +8,7 @@ import {
   revisionDirectory,
   sealManifestV2,
   sha256Hex,
-} from "@sumi-os/corpus-contract";
+} from "@sumi-labs/corpus-contract";
 import { execFile as execFileCallback } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {

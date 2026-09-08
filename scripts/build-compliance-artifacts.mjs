@@ -216,7 +216,7 @@ export function loadMcpArtifact(inventory) {
         );
       }
       components.add(packageEntry.identity);
-    } else if (packageEntry.manifest.name.startsWith("@sumi-os/")) {
+    } else if (packageEntry.manifest.name.startsWith("@sumi-labs/")) {
       firstParty.set(packageEntry.identity, packageEntry);
     } else {
       throw new Error(`Unexpected non-workspace SEA input: ${input}`);
@@ -713,8 +713,8 @@ function writeArtifactCompliance(artifact, inventory) {
 
 export function buildComplianceArtifacts() {
   rmSync(outputRoot, { recursive: true, force: true });
-  const mcpInventory = loadLicenseInventory("@sumi-os/docs-mcp");
-  const webInventory = loadLicenseInventory("@sumi-os/docs-web");
+  const mcpInventory = loadLicenseInventory("@sumi-labs/docs-mcp");
+  const webInventory = loadLicenseInventory("@sumi-labs/docs-web");
   writeArtifactCompliance(loadMcpArtifact(mcpInventory), mcpInventory);
   writeArtifactCompliance(loadWebArtifact(webInventory), webInventory);
 }

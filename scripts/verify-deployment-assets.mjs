@@ -108,9 +108,9 @@ function validateDockerAssets(errors) {
     errors,
   );
   requireCondition(
-    dockerfile.indexOf("@sumi-os/corpus-contract build") <
-      dockerfile.indexOf("@sumi-os/docs-mcp build") &&
-      /pnpm --ignore-scripts\s+\\?\s*--filter @sumi-os\/docs-mcp deploy/u.test(
+    dockerfile.indexOf("@sumi-labs/corpus-contract build") <
+      dockerfile.indexOf("@sumi-labs/docs-mcp build") &&
+      /pnpm --ignore-scripts\s+\\?\s*--filter @sumi-labs\/docs-mcp deploy/u.test(
         dockerfile,
       ) &&
       dockerfile.includes("--prod") &&

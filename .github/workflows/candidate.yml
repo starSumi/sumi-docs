@@ -81,7 +81,7 @@ jobs:
         run: pnpm run build:sea
 
       - name: Smoke test Windows executable
-        run: pnpm --filter @sumi-os/docs-mcp example:smoke --executable artifacts/bin/sumi-docs-mcp.exe
+        run: pnpm --filter @sumi-labs/docs-mcp example:smoke --executable artifacts/bin/sumi-docs-mcp.exe
 
       - name: Record performance gate
         id: performance

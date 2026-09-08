@@ -111,8 +111,11 @@ the compiled distribution, active operator documentation, examples, project
 policies, README, and license. Local state, historical reports, tests, and SEA
 artifacts are excluded.
 
-The npm registry package is not currently published. Do not document `npx` or global
-installation as supported until registry publication is verified.
+The public npm packages are published under the `@sumi-labs` scope. Verify the
+registry metadata before promotion; the source baseline currently reconciles
+`@sumi-labs/corpus-contract@0.1.1` and `@sumi-labs/docs-mcp@0.1.2`. Do not
+claim that a candidate is published until its exact tarball has passed human
+acceptance and registry readback.
 
 The repository candidate and human-acceptance workflow is documented in
 [releasing.md](releasing.md). It validates the package boundary, builds and
