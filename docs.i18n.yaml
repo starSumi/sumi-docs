@@ -3,8 +3,8 @@ docs/index.mdx: 6978a9e94923343554c66269daab148814c7e295
 docs/zh-cn/index.mdx: a76d979ce42207f59380887c7197e4b75cdb70d0
 docs/getting-started.md: 4860036c139500fe0091e6add4de09a0d7625fe1
 docs/zh-cn/getting-started.md: 00dacd3388444bf1619f381641f412a37f77c4ec
-docs/configuration.md: 5e64964a57622b46741a253961e56afc6130c8ba
-docs/zh-cn/configuration.md: bc56d2171706d528d74c22459f0588142daad618
+docs/configuration.md: af07fea6f9981ef47011e2da73b9f3b40e64c5a3
+docs/zh-cn/configuration.md: f9ed47e868ae42e8a341226fed99fdf93bad1317
 docs/tool-reference.md: 7b491714d1e10aa7740a83c45af09af5f0b9d600
 docs/zh-cn/tool-reference.md: 1bf2b982fbf5fe840bb0f20589de2d153c31abed
 docs/agent-hosts.md: f1aa5f40c292aa4e2d3dafa7ef014fb181b89fd9
@@ -21,8 +21,8 @@ docs/observability.md: 072154ab5f53096683873c5b9daf97ba4ff30b95
 docs/zh-cn/observability.md: 1cdd7d98c51d38f9ac56883d46f4a4cd55520dbb
 docs/product/product-requirements.md: e8038b2cce450acc8f1388c16e9b19b4b91dc4f0
 docs/zh-cn/product/product-requirements.md: 263edb1266b3e3a36e945209d247afa6ed02aa2c
-docs/product/engineering-records.md: 52feafdcf9879c27c4faf421e83b44c82bd34df9
-docs/zh-cn/product/engineering-records.md: cf82971d8f848846cc3a5e007f237ef06b44e420
+docs/product/engineering-records.md: 03541268cbfc1e57ea9710689e21de7a2a87c4b0
+docs/zh-cn/product/engineering-records.md: 5502de9e958cb931abc63465492303b2010dafca
 docs/security.md: f699e12b1f70633cc7418d9537c4db2cbd4e5132
 docs/zh-cn/security.md: 37ee615083c56bedd397647e3ca9d8a8d58830b2
 docs/operations/checkpoints.md: c15c4a9815e81c18e14e9d0ccdacc5bcdaea0151
