@@ -289,7 +289,7 @@ jobs:
     steps:
       - name: Redeploy the preserved Pages artifact
         id: rollback
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         with:
           artifact_name: ${{ needs.observe.outputs.rollback-artifact }}
 
@@ -314,7 +314,7 @@ jobs:
 
       - name: Configure GitHub Pages
         id: pages
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Match the public locator to the preserved artifact
         id: readback
@@ -420,7 +420,7 @@ jobs:
 
       - name: Configure GitHub Pages for public readback
         id: pages
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Verify both public tuples after recovery
         env:
