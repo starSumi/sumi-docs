@@ -64,7 +64,7 @@
     "prettier": "^3.9.6",
     "prettier-plugin-astro": "0.14.1",
     "smol-toml": "^1.8.0",
-    "yaml": "^2.4.5"
+    "yaml": "^2.9.1"
   },
   "lint-staged": {
     "packages/mcp/**/*.{ts,tsx,mts,cts}": [
