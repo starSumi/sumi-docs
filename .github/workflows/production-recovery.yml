@@ -35,7 +35,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
@@ -87,7 +87,7 @@ jobs:
 
       - name: Download the exact failed-run Pages rollback
         if: ${{ steps.evidence.outputs.pages-required == 'true' }}
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: github-pages-rollback-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
           path: artifacts/pages
@@ -113,7 +113,7 @@ jobs:
 
       - name: Re-upload the exact Pages rollback for this recovery run
         if: ${{ steps.evidence.outputs.pages-required == 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ steps.evidence.outputs.rollback-artifact }}
           path: artifacts/pages/artifact.tar
@@ -146,12 +146,12 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
       - name: Download the exact deployment record
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: mcp-deployment-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
           path: artifacts/deployment
@@ -179,7 +179,7 @@ jobs:
 
       - name: Verify optional failed-run switch artifact
         if: ${{ needs.observe.outputs.switch-present == 'true' }}
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: mcp-switch-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
           path: artifacts/deployment
@@ -240,7 +240,7 @@ jobs:
       - name: Keep recovery observation when artifact storage is degraded
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mcp-recovery-observation-${{ github.run_id }}-${{ github.run_attempt }}-from-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
           path: artifacts/deployment/switch-observation.json
@@ -289,7 +289,7 @@ jobs:
     steps:
       - name: Redeploy the preserved Pages artifact
         id: rollback
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         with:
           artifact_name: ${{ needs.observe.outputs.rollback-artifact }}
 
@@ -307,14 +307,14 @@ jobs:
       corpus-revision: ${{ steps.readback.outputs.corpus-revision }}
     steps:
       - name: Download the exact re-uploaded Pages rollback
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ needs.observe.outputs.rollback-artifact }}
           path: artifacts/pages
 
       - name: Configure GitHub Pages
         id: pages
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Match the public locator to the preserved artifact
         id: readback
@@ -364,7 +364,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
@@ -420,7 +420,7 @@ jobs:
 
       - name: Configure GitHub Pages for public readback
         id: pages
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Verify both public tuples after recovery
         env:
